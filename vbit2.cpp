@@ -34,6 +34,7 @@
  *************************************************************************** **/
 
 #include "vbit2.h"
+#include "spoteefax.h"
 
 using namespace vbit;
 using namespace ttx;
@@ -57,8 +58,11 @@ int main(int argc, char** argv)
 
   Service* svc=new Service(configure, pageList); // Need to copy the subtitle packet source for Newfor
 
+  const auto sp = std::unique_ptr<spoteefax::Spoteefax>(new spoteefax::Spoteefax);
+
 	std::thread monitorThread(&FileMonitor::run, FileMonitor(configure, pageList));
 	std::thread serviceThread(&Service::run, svc);
+  std::thread spoteefaxThread(&spoteefax::Spoteefax::run, sp.get());
 	
 	if (configure->GetCommandPortEnabled())
 	{
@@ -68,6 +72,7 @@ int main(int argc, char** argv)
 	}
 	
 	// The threads should never stop, but just in case...
+  spoteefaxThread.join();
 	monitorThread.join();
 	serviceThread.join();
 

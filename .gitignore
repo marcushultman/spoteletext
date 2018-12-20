@@ -2,3 +2,6 @@
 *.o
 *.bak
 *.bak
+
+# spotify credentials
+spclient.h
