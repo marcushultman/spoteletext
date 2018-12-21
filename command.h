@@ -45,7 +45,9 @@
 #include <winsock2.h>
 #else
 #include <sys/ioctl.h>
+#ifdef RASPBIAN
 #include <linux/spi/spidev.h>
+#endif
 
 #include <sys/socket.h> /* for socket(), bind(), and connect() */
 #include <arpa/inet.h>  /* for sockaddr_in and inet_ntoa() */
