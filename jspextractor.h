@@ -21,6 +21,12 @@ class extractor {
     }
   }
 
+  void reset() {
+    _len = -1;
+    _extracted = false;
+    _value.clear();
+  }
+
  private:
   void findField(const char *data, size_t size) {
     while (size && data[0] != '"') {
