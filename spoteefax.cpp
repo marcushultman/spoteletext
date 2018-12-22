@@ -275,6 +275,8 @@ bool Spoteefax::fetchNowPlaying() {
 
   if (context && title && artist) {
     _now_playing = {"", *title, *artist};
+  } else {
+    _now_playing = {};
   }
   std::cerr << "context: " << _now_playing.context.c_str() << std::endl;
   std::cerr << "track_name: " << _now_playing.title.c_str() << std::endl;
