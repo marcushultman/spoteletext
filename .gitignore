@@ -3,6 +3,8 @@
 *.bak
 *.bak
 
+*.pyc
+
 # spotify credentials
 spclient.h
 
