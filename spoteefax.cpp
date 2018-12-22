@@ -6,6 +6,7 @@
 #include <fstream>
 #include <iostream>
 #include <thread>
+#include "jsp_filter.h"
 #include "jspextractor.h"
 #include "spclient.h"
 #include "sptemplates.h"
@@ -81,34 +82,6 @@ size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
   size *= nmemb;
   static_cast<std::string*>(obj)->append(ptr, size);
   return size;
-}
-
-size_t findStart(const std::string &buffer, const char* prop, int prop_indent) {
-  auto i = 0, prev = 0, indent = 0;
-  while (i != std::string::npos) {
-    i = buffer.find(prop, (prev = i) + 1);
-    for (; prev < i; ++prev) {
-      indent += buffer[prev] == '{' ? 1 : buffer[prev] == '}' ? -1 : 0;
-    }
-    if (indent == prop_indent) {
-      break;
-    }
-  }
-  return i;
-}
-
-void filterJson(std::string &buffer, const char* prop, int prop_indent, jsproperty::extractor &extractor) {
-  auto i = findStart(buffer, prop, prop_indent);
-  if (i == std::string::npos) {
-    return;
-  }
-  auto indent = 1;
-  for (i = buffer.find("{", i) + 1; !extractor && i < buffer.size(); ++i) {
-    indent += buffer[i] == '{' ? 1 : buffer[i] == '}' ? -1 : 0;
-    if (indent == 1) {
-      extractor.feed(&buffer[i], 1);
-    }
-  }
 }
 
 }  // namespace
@@ -296,9 +269,9 @@ bool Spoteefax::fetchNowPlaying() {
     return false;
   }
   jsproperty::extractor context{"href"}, title{"name"}, artist{"name"};
-  filterJson(buffer, "\"context\"", 1, context);  
-  filterJson(buffer, "\"item\"", 1, title);
-  filterJson(buffer, "\"artists\"", 2, artist);
+  filter(buffer, "\"context\"", 1, 0, context);
+  filter(buffer, "\"item\"", 1, 0, title);
+  filter(buffer, "\"artists\"", 2, 0, artist);
 
   if (context && title && artist) {
     _now_playing = {"", *title, *artist};
