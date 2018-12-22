@@ -54,7 +54,7 @@ class extractor {
   }
 
   void extractValue(const char *data, size_t size) {
-    while (size && (data[0] == ':' || data[0] == '"' || (std::isspace(data[0]) && _value.empty()))) {
+    while (size && _value.empty() && (data[0] == '"' || data[0] == ':' || std::isspace(data[0]))) {
       ++data; --size;
     }
     if (!size) {
