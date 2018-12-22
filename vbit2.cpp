@@ -58,7 +58,8 @@ int main(int argc, char** argv)
 
   Service* svc=new Service(configure, pageList); // Need to copy the subtitle packet source for Newfor
 
-  const auto sp = std::unique_ptr<spoteefax::Spoteefax>(new spoteefax::Spoteefax);
+  const auto page_dir = configure->GetPageDirectory();
+  const auto sp = std::unique_ptr<spoteefax::Spoteefax>(new spoteefax::Spoteefax(page_dir));
 
 	std::thread monitorThread(&FileMonitor::run, FileMonitor(configure, pageList));
 	std::thread serviceThread(&Service::run, svc);

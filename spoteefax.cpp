@@ -1,17 +1,24 @@
 #include "spoteefax.h"
 
+#include <algorithm>
+#include <cstdio>
+#include <cstring>
+#include <fstream>
 #include <iostream>
 #include <thread>
 #include "jspextractor.h"
 #include "spclient.h"
+#include "sptemplates.h"
 
 namespace spoteefax {
 namespace {
 
 const auto kAuthDeviceCodeUrl = "https://accounts.spotify.com/api/device/code";
 const auto kAuthTokenUrl = "https://accounts.spotify.com/api/token";
+const auto kPlayerUrl = "https://api.spotify.com/v1/me/player";
 
 const auto kContentTypeXWWWFormUrlencoded = "Content-Type: application/x-www-form-urlencoded";
+const auto kAuthorizationBearer = "Authorization: Bearer ";
 
 struct DeviceFlowData {
   jsproperty::extractor device_code{"device_code"};
@@ -70,9 +77,43 @@ size_t extractTokenData(char *ptr, size_t size, size_t nmemb, void *obj) {
   return size;
 }
 
+size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
+  size *= nmemb;
+  static_cast<std::string*>(obj)->append(ptr, size);
+  return size;
+}
+
+size_t findStart(const std::string &buffer, const char* prop, int prop_indent) {
+  auto i = 0, prev = 0, indent = 0;
+  while (i != std::string::npos) {
+    i = buffer.find(prop, (prev = i) + 1);
+    for (; prev < i; ++prev) {
+      indent += buffer[prev] == '{' ? 1 : buffer[prev] == '}' ? -1 : 0;
+    }
+    if (indent == prop_indent) {
+      break;
+    }
+  }
+  return i;
+}
+
+void filterJson(std::string &buffer, const char* prop, int prop_indent, jsproperty::extractor &extractor) {
+  auto i = findStart(buffer, prop, prop_indent);
+  if (i == std::string::npos) {
+    return;
+  }
+  auto indent = 1;
+  for (i = buffer.find("{", i) + 1; !extractor && i < buffer.size(); ++i) {
+    indent += buffer[i] == '{' ? 1 : buffer[i] == '}' ? -1 : 0;
+    if (indent == 1) {
+      extractor.feed(&buffer[i], 1);
+    }
+  }
+}
+
 }  // namespace
 
-Spoteefax::Spoteefax() {
+Spoteefax::Spoteefax(const std::string &page_dir) : _out_file{page_dir + "/P100-3F7F.tti"}  {
   _curl = curl_easy_init();
 }
 
@@ -87,6 +128,7 @@ int Spoteefax::run() {
   if (!_curl) {
     return 1;
   }
+  std::remove(_out_file.c_str());
   authenticate();
   loop();
   return 0;
@@ -107,7 +149,7 @@ void Spoteefax::authenticate() {
     curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res);
     curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, extractDeviceFlowData);
 
-    long status;
+    long status{};
     if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || !res || status != 200) {
       std::cerr << "failed to get device_code" << std::endl;
       return;
@@ -193,7 +235,7 @@ bool Spoteefax::fetchTokens(const std::string &code) {
   curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res);
   curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, extractTokenData);
 
-  long status;
+  long status{};
   if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || !res || status != 200) {
     std::cerr << "failed to get token" << std::endl;
     return false;
@@ -207,19 +249,86 @@ bool Spoteefax::fetchTokens(const std::string &code) {
 }
 
 void Spoteefax::loop() {
+  curl_easy_reset(_curl);
   for (;;) {
+    fetchNowPlaying();
     displayNPV();
     std::this_thread::sleep_for(std::chrono::seconds{5});
   }
 }
 
-void Spoteefax::displayCode(const std::string &user_code, const std::string &verification_url) {
-  // todo: display code
-  std::cerr << "display: " << user_code.c_str() << std::endl;
+void Spoteefax::displayCode(const std::string &code, const std::string &url) {
+  std::cerr << "display code: " << code.c_str() << std::endl;
+  using namespace templates;
+  const auto url_offset = std::max<int>(0, (36 - url.size()) / 2);
+  const auto code_offset = std::max<int>(0, (36 - code.size()) / 2);
+  std::ofstream file{_out_file, std::ofstream::binary};
+  file.write(kPair, kPairUrlOffset);
+  for (auto i = 0; i < url_offset; ++i) {
+    file << " ";
+  }
+  file << url.c_str();
+  file.write(kPair + kPairUrlOffset, kPairCodeOffset - kPairUrlOffset);
+  for (auto i = 0; i < code_offset; ++i) {
+    file << " ";
+  }
+  file << " " << code.c_str();
+  file.write(kPair + kPairCodeOffset, strlen(kPair) - kPairCodeOffset);
+}
+
+bool Spoteefax::fetchNowPlaying() {
+  const auto auth_header = kAuthorizationBearer + _access_token;
+  const auto header = curl_slist_append(nullptr, auth_header.c_str());
+
+  curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
+  curl_easy_setopt(_curl, CURLOPT_URL, kPlayerUrl);
+
+  std::cerr << "header: " << auth_header.c_str() << std::endl;
+  std::cerr << "url: " << kPlayerUrl << std::endl;
+
+  std::string buffer;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
+
+  long status{};
+  if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || status != 200) {
+    std::cerr << "failed to get now playing data (" << status << ")" << std::endl;
+    return false;
+  }
+  jsproperty::extractor context{"href"}, title{"name"}, artist{"name"};
+  filterJson(buffer, "\"context\"", 1, context);  
+  filterJson(buffer, "\"item\"", 1, title);
+  filterJson(buffer, "\"artists\"", 2, artist);
+
+  if (context && title && artist) {
+    _now_playing = {"", *title, *artist};
+  }
+  std::cerr << "context: " << _now_playing.context.c_str() << std::endl;
+  std::cerr << "track_name: " << _now_playing.title.c_str() << std::endl;
+  std::cerr << "artist_name: " << _now_playing.artist.c_str() << std::endl;
+
+  return true;
 }
 
 void Spoteefax::displayNPV() {
-  // todo: display Now Playing view
+  const auto title_offset = std::max<int>(0, (36 - _now_playing.title.size()) / 2);
+  const auto artist_offset = std::max<int>(0, (38 - _now_playing.artist.size()) / 2);
+
+  using namespace templates;
+  std::ofstream file{_out_file, std::ofstream::binary};
+  file.write(kNpv, kNpvContextOffset);
+  file << " " << _now_playing.context;
+  file.write(kNpv + kNpvContextOffset, kNpvTitleOffset - kNpvContextOffset);
+  for (auto i = 0; i < title_offset; ++i) {
+    file << " ";
+  }
+  file << _now_playing.title;
+  file.write(kNpv + kNpvTitleOffset, kNpvArtistOffset - kNpvTitleOffset);
+  for (auto i = 0; i < artist_offset; ++i) {
+    file << " ";
+  }
+  file << _now_playing.artist;
+  file.write(kNpv + kNpvArtistOffset, strlen(kNpv) - kNpvArtistOffset);
 }
 
 

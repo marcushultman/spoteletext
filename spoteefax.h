@@ -14,8 +14,14 @@ class Spoteefax {
     kPollError,
   };
 
+  struct NowPlaying {
+    std::string context;
+    std::string title;
+    std::string artist;
+  };
+
  public:
-  Spoteefax();
+  Spoteefax(const std::string &page_dir);
   ~Spoteefax();
 
   int run();
@@ -36,10 +42,14 @@ class Spoteefax {
   // update loop
   void loop();
 
-  void displayCode(const std::string &user_code, const std::string &verification_url);
+  bool fetchNowPlaying();
+  void displayCode(const std::string &code, const std::string &verification_url);
   void displayNPV();
 
   // todo: image handling
+  std::string _out_file;
+
+  NowPlaying _now_playing;
 
   CURL *_curl{nullptr};
   std::string _access_token;
