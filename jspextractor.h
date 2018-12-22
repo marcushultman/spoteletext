@@ -8,7 +8,7 @@ class extractor {
  public:
   explicit extractor(const std::string &prop) : _prop(prop) {}
 
-  void feed(char *data, size_t size) {
+  void feed(const char *data, size_t size) {
     if (!size || _extracted) {
       return;
     }
@@ -22,7 +22,7 @@ class extractor {
   }
 
  private:
-  void findField(char *data, size_t size) {
+  void findField(const char *data, size_t size) {
     while (size && data[0] != '"') {
       ++data; --size;
     }
@@ -32,7 +32,7 @@ class extractor {
     feed(data, size);
   }
 
-  void extractField(char *data, size_t size) {
+  void extractField(const char *data, size_t size) {
     while (size) {
       if (data[0] == _prop[_len]) {
         ++_len; ++data; --size;
@@ -47,7 +47,7 @@ class extractor {
     feed(data, size);
   }
 
-  void extractValue(char *data, size_t size) {
+  void extractValue(const char *data, size_t size) {
     while (size && (data[0] == ':' || data[0] == '"' || (std::isspace(data[0]) && _value.empty()))) {
       ++data; --size;
     }
