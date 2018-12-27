@@ -38,11 +38,12 @@ class Spoteefax {
             std::string &auth_code);
   PollResult tryAuth(const std::string &device_code, std::string &auth_code);
   bool fetchTokens(const std::string &auth_code);
+  bool refreshToken();
 
   // update loop
   void loop();
 
-  bool fetchNowPlaying();
+  bool fetchNowPlaying(bool retry);
   void displayCode(const std::string &code, const std::string &verification_url);
   void displayNPV();
 

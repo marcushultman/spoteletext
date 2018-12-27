@@ -221,10 +221,40 @@ bool Spoteefax::fetchTokens(const std::string &code) {
   return true;
 }
 
+bool Spoteefax::refreshToken() {
+  const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
+  const auto data = std::string{"client_id="} + credentials::kClientId +
+      "&client_secret=" + credentials::kClientSecret +
+      "&refresh_token=" + _refresh_token +
+      "&grant_type=refresh_token";
+
+  curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
+  curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, data.c_str());
+  curl_easy_setopt(_curl, CURLOPT_URL, kAuthTokenUrl);
+
+  TokenData res;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res);
+  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, extractTokenData);
+
+  long status{};
+  if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || !res || status != 200) {
+    std::cerr << "failed to refresh token" << std::endl;
+    return false;
+  }
+  std::cerr << "access_token: " << res.access_token->c_str() << std::endl;
+
+  _access_token = *res.access_token;
+
+  curl_easy_reset(_curl);
+  return true;
+}
+
 void Spoteefax::loop() {
   curl_easy_reset(_curl);
   for (;;) {
-    fetchNowPlaying();
+    if (!fetchNowPlaying(true)) {
+      break;
+    }
     displayNPV();
     std::this_thread::sleep_for(std::chrono::seconds{5});
   }
@@ -249,7 +279,7 @@ void Spoteefax::displayCode(const std::string &code, const std::string &url) {
   file.write(kPair + kPairCodeOffset, strlen(kPair) - kPairCodeOffset);
 }
 
-bool Spoteefax::fetchNowPlaying() {
+bool Spoteefax::fetchNowPlaying(bool retry) {
   const auto auth_header = kAuthorizationBearer + _access_token;
   const auto header = curl_slist_append(nullptr, auth_header.c_str());
 
@@ -264,9 +294,17 @@ bool Spoteefax::fetchNowPlaying() {
   curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
 
   long status{};
-  if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || status != 200) {
-    std::cerr << "failed to get now playing data (" << status << ")" << std::endl;
-    return false;
+  bool request_error =
+      curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status);
+  if (request_error || status >= 400) {
+    if (!retry) {
+      std::cerr << "failed to get now playing data (" << status << ")" << std::endl;
+    }
+    return retry && refreshToken() && fetchNowPlaying(false);
+  }
+  if (status == 204) {
+    std::cerr << "nothing is playing" << std::endl;
+    return true;
   }
   jsproperty::extractor context{"href"}, title{"name"}, artist{"name"};
   filter(buffer, "\"context\"", 1, 0, context);
