@@ -2,7 +2,7 @@
 CC=g++
 
 #Set any compiler flags you want to use (e.g. "-I."), or leave blank
-CXXFLAGS = -g -O2 -Wall -std=gnu++11 -fstack-protector-all -Wextra -I. -I/usr/local/include
+CXXFLAGS = -g -O2 -Wall -std=c++14 -fstack-protector-all -Wextra -I. -I/usr/local/include
 
 LIBS = -lpthread -fstack-protector -lcurl -L/usr/local/lib
 
