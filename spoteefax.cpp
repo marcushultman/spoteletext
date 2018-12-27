@@ -26,7 +26,7 @@ struct DeviceFlowData {
   jsproperty::extractor user_code{"user_code"};
   // jsproperty::extractor expires_in{"expires_in"};  // 3599
   jsproperty::extractor verification_url{"verification_url"};
-  // jsproperty::extractor verification_url_prefilled{"verification_url_prefilled"};  // https://spotify.com/pair?code\u003dXXXXXX
+  jsproperty::extractor verification_url_prefilled{"verification_url_prefilled"};  // https://spotify.com/pair?code\u003dXXXXXX
   jsproperty::extractor interval_str{"interval"};
   operator bool() { return device_code && user_code && verification_url && interval_str; }
 
@@ -41,6 +41,7 @@ size_t extractDeviceFlowData(char *ptr, size_t size, size_t nmemb, void *obj) {
   data.device_code.feed(ptr, size);
   data.user_code.feed(ptr, size);
   data.verification_url.feed(ptr, size);
+  data.verification_url_prefilled.feed(ptr, size);
   data.interval_str.feed(ptr, size);
   return size;
 }
@@ -127,9 +128,8 @@ void Spoteefax::authenticate() {
       std::cerr << "failed to get device_code" << std::endl;
       return;
     }
-    std::cerr << "device_code: " << res.device_code->c_str() << std::endl;
     std::cerr << "user_code: " << res.user_code->c_str() << std::endl;
-    std::cerr << "interval_str: " << res.interval_str->c_str() << std::endl;
+    std::cerr << "url: " << res.verification_url_prefilled->c_str() << std::endl;
 
     if (authenticateCode(*res.device_code, *res.user_code, *res.verification_url, res.interval())) {
       return;
@@ -184,9 +184,8 @@ Spoteefax::PollResult Spoteefax::tryAuth(const std::string &device_code, std::st
     std::cerr << "failed to get auth_code or error" << std::endl;
     return kPollError;
   }
-  std::cerr << "auth_code: " << res.auth_code->c_str() << " error: " << res.error->c_str() << std::endl;
-
   if (res.error) {
+    std::cerr << "auth_code error: " << res.error->c_str() << std::endl;
     return *res.error == "authorization_pending" ? kPollWait : kPollError;
   }
   auth_code = *res.auth_code;
@@ -286,9 +285,6 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
   curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
   curl_easy_setopt(_curl, CURLOPT_URL, kPlayerUrl);
 
-  std::cerr << "header: " << auth_header.c_str() << std::endl;
-  std::cerr << "url: " << kPlayerUrl << std::endl;
-
   std::string buffer;
   curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
   curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
@@ -312,13 +308,17 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
   filter(buffer, "\"artists\"", 2, 0, artist);
 
   if (context && title && artist) {
+    if (*title == _now_playing.title) {
+      return true;
+    }
     _now_playing = {"", *title, *artist};
+
+    std::cerr << "context: " << _now_playing.context.c_str() << std::endl;
+    std::cerr << "track_name: " << _now_playing.title.c_str() << std::endl;
+    std::cerr << "artist_name: " << _now_playing.artist.c_str() << std::endl;
   } else {
     _now_playing = {};
   }
-  std::cerr << "context: " << _now_playing.context.c_str() << std::endl;
-  std::cerr << "track_name: " << _now_playing.title.c_str() << std::endl;
-  std::cerr << "artist_name: " << _now_playing.artist.c_str() << std::endl;
 
   return true;
 }
