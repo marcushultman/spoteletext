@@ -12,16 +12,22 @@ namespace templates {
 
 """)
   lines = open("npv.tti").readlines()
-  context, title, artist = (-2, -2, -2)
+  context, image, title, artist = (-2, 0, -2, -2)
   for line in lines[0:6]:
     context += len(line)
-  for line in lines[0:22]:
+  for line in lines[0:7]:
+    image += len(line)
+  for line in lines[0:9]:
     title += len(line)
-  for line in lines[0:24]:
+  for line in lines[0:11]:
     artist += len(line)
   out.write("const int kNpvContextOffset = " + str(context) + ";\n")
+  out.write("const int kNpvImageOffset = " + str(image) + ";\n")
   out.write("const int kNpvTitleOffset = " + str(title) + ";\n")
   out.write("const int kNpvArtistOffset = " + str(artist) + ";\n\n")
+
+  out.write("const int kNpvImageHeight = 14;\n\n")
+
   out.write("const char kNpv[] = {\n")
   out.write("\n".join(map(lambda line : "    " + ", ".join(map(lambda c : hex(ord(c)), list(line))) + ",", lines)))
   out.write("\n};\n\n")

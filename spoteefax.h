@@ -1,8 +1,10 @@
 #pragma once
 
 #include <chrono>
+#include <memory>
 #include <string>
 #include <curl/curl.h>
+#include "spoteefax_image.h"
 
 namespace spoteefax {
 
@@ -44,11 +46,13 @@ class Spoteefax {
   void loop();
 
   bool fetchNowPlaying(bool retry);
+  void fetchImage(const std::string &url);
   void displayCode(const std::string &code, const std::string &verification_url);
   void displayNPV();
 
   // todo: image handling
   std::string _out_file;
+  std::unique_ptr<image::Image> _image;
 
   NowPlaying _now_playing;
 

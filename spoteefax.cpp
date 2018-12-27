@@ -4,8 +4,10 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
+#include <jpeglib.h>
 #include <iostream>
 #include <thread>
+#include <vector>
 #include "jsp_filter.h"
 #include "jspextractor.h"
 #include "spclient.h"
@@ -82,6 +84,13 @@ size_t extractTokenData(char *ptr, size_t size, size_t nmemb, void *obj) {
 size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
   size *= nmemb;
   static_cast<std::string*>(obj)->append(ptr, size);
+  return size;
+}
+
+size_t bufferArray(char *ptr, size_t size, size_t nmemb, void *obj) {
+  size *= nmemb;
+  auto &v = *static_cast<std::vector<unsigned char>*>(obj);
+  v.insert(v.end(), ptr, ptr + size);
   return size;
 }
 
@@ -302,20 +311,27 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
     std::cerr << "nothing is playing" << std::endl;
     return true;
   }
-  jsproperty::extractor context{"href"}, title{"name"}, artist{"name"};
+
+  jsproperty::extractor context{"href"}, title{"name"}, artist{"name"}, image{"url"}, image_height{"height"};
   filter(buffer, "\"context\"", 1, 0, context);
   filter(buffer, "\"item\"", 1, 0, title);
   filter(buffer, "\"artists\"", 2, 0, artist);
+  filter(buffer, "\"images\"", 3, 2, image);
+  filter(buffer, "\"images\"", 3, 2, image_height);
 
   if (context && title && artist) {
     if (*title == _now_playing.title) {
       return true;
+    }
+    if (image) {
+      fetchImage(*image);
     }
     _now_playing = {"", *title, *artist};
 
     std::cerr << "context: " << _now_playing.context.c_str() << std::endl;
     std::cerr << "track_name: " << _now_playing.title.c_str() << std::endl;
     std::cerr << "artist_name: " << _now_playing.artist.c_str() << std::endl;
+    std::cerr << "image: " << image->c_str() << std::endl;
   } else {
     _now_playing = {};
   }
@@ -323,24 +339,117 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
   return true;
 }
 
+void Spoteefax::fetchImage(const std::string &url) {
+  curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
+
+  std::vector<unsigned char> buffer;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferArray);
+
+  long status{};
+  if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || status != 200) {
+    std::cerr << "failed to fetch image (" << status << ")" << std::endl;
+    return;
+  }
+
+  struct jpeg_decompress_struct cinfo;
+  struct jpeg_error_mgr jerr;
+
+  cinfo.err = jpeg_std_error(&jerr);
+  jpeg_create_decompress(&cinfo);
+  jpeg_mem_src(&cinfo, &buffer[0], buffer.size());
+
+  auto result = jpeg_read_header(&cinfo, TRUE);
+  if (result != 1) {
+    return;
+  }
+  jpeg_start_decompress(&cinfo);
+
+  const auto row_stride = cinfo.output_width * cinfo.output_components;
+  std::vector<unsigned char> bmp_buffer(cinfo.output_height * row_stride);
+
+  while (cinfo.output_scanline < cinfo.output_height) {
+    auto *buffer = &bmp_buffer[cinfo.output_scanline * row_stride];
+    jpeg_read_scanlines(&cinfo, &buffer, 1);
+  }
+  jpeg_finish_decompress(&cinfo);
+  jpeg_destroy_decompress(&cinfo);
+
+  _image = std::make_unique<image::Image>(20, 14);
+  _image->setSrc(cinfo.output_width, cinfo.output_height, cinfo.output_components, &bmp_buffer[0]);
+
+#if !(RASPBIAN)
+  for (auto y = 0; y < 3 * _image->height(); ++y) {
+    // Original
+    for (auto x = 0; x < 2 * _image->width(); ++x) {
+      std::cerr << "\033[1;" << +_image->get(x, y) << "m  ";
+    }
+    std::cerr << "\033[0m    ";
+
+    // Reconstructed
+    auto line = _image->line(y / 3);
+    auto *bg = &image::kColors[0];
+    auto *fg = &image::kColors[0];
+
+    for (auto it = line.begin(); it != line.end(); ++it) {
+      if (*it == '\u001b') {
+        ++it;
+        if (*it == ']' || *it == '\\') {
+          bg = *it == '\\' ? &image::kColors[0] : fg;
+          std::cerr << "\033[1;" << +bg->terminal_code << "mb" << +bg->terminal_code << ".";
+        } else {
+          fg = std::find_if(
+              image::kColors.begin(), image::kColors.end(), [it](auto &c) { return c.code == *it; });
+          std::cerr << "\033[1;" << +bg->terminal_code << "mf" << +fg->terminal_code << ".";
+          std::cerr << "\033[1;" << +fg->terminal_code << "m";
+        }
+        continue;
+      }
+      if (y % 3 == 0) {
+        std::cerr << "\033[1;" << (*it & 1 << 0 ? +fg->terminal_code : +bg->terminal_code) << "m  ";
+        std::cerr << "\033[1;" << (*it & 1 << 1 ? +fg->terminal_code : +bg->terminal_code) << "m  ";
+      } else if (y % 3 == 1) {
+        std::cerr << "\033[1;" << (*it & 1 << 2 ? +fg->terminal_code : +bg->terminal_code) << "m  ";
+        std::cerr << "\033[1;" << (*it & 1 << 3 ? +fg->terminal_code : +bg->terminal_code) << "m  ";
+      } else if (y % 3 == 2) {
+        std::cerr << "\033[1;" << (*it & 1 << 4 ? +fg->terminal_code : +bg->terminal_code) << "m  ";
+        std::cerr << "\033[1;" << (*it & 1 << 6 ? +fg->terminal_code : +bg->terminal_code) << "m  ";
+      }
+    }
+    std::cerr << "\033[0m";
+    std::cerr << std::endl;
+  }
+#endif
+}
+
 void Spoteefax::displayNPV() {
-  const auto title_offset = std::max<int>(0, (36 - _now_playing.title.size()) / 2);
-  const auto artist_offset = std::max<int>(0, (38 - _now_playing.artist.size()) / 2);
+  const auto title_offset = std::max<int>(0, (38 - _now_playing.title.size()) / 2);
+  const auto artist_offset = std::max<int>(0, (40 - _now_playing.artist.size()) / 2);
 
   using namespace templates;
   std::ofstream file{_out_file, std::ofstream::binary};
   file.write(kNpv, kNpvContextOffset);
   file << " " << _now_playing.context;
-  file.write(kNpv + kNpvContextOffset, kNpvTitleOffset - kNpvContextOffset);
+
+  file.write(kNpv + kNpvContextOffset, kNpvImageOffset - kNpvContextOffset);
+  for (auto i = 0; i < kNpvImageHeight; ++i) {
+    file << "OL," << (4 + i) << ",         ";
+    if (_image) {
+      file << _image->line(i).c_str();
+    }
+    file << "\n";
+  }
+
+  file.write(kNpv + kNpvImageOffset, kNpvTitleOffset - kNpvImageOffset);
   for (auto i = 0; i < title_offset; ++i) {
     file << " ";
   }
-  file << _now_playing.title;
+  file << _now_playing.title.substr(0, 38);
   file.write(kNpv + kNpvTitleOffset, kNpvArtistOffset - kNpvTitleOffset);
   for (auto i = 0; i < artist_offset; ++i) {
     file << " ";
   }
-  file << _now_playing.artist;
+  file << _now_playing.artist.substr(0, 40);
   file.write(kNpv + kNpvArtistOffset, strlen(kNpv) - kNpvArtistOffset);
 }
 
