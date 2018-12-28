@@ -468,13 +468,13 @@ void Spoteefax::fetchImage(const std::string &url) {
 }
 
 void Spoteefax::displayNPV() {
-  const auto title_offset = std::max<int>(0, (38 - _now_playing.title.size()) / 2);
-  const auto artist_offset = std::max<int>(0, (40 - _now_playing.artist.size()) / 2);
+  const auto title_offset = std::max<int>(0, (38 - _now_playing.title.substr(0, 38).size()) / 2);
+  const auto artist_offset = std::max<int>(0, (40 - _now_playing.artist.substr(0, 40).size()) / 2);
 
   using namespace templates;
   std::ofstream file{_out_file, std::ofstream::binary};
   file.write(kNpv, kNpvContextOffset);
-  file << " " << _now_playing.context;
+  file << " " << _now_playing.context.c_str();
 
   file.write(kNpv + kNpvContextOffset, kNpvImageOffset - kNpvContextOffset);
   for (auto i = 0; i < kNpvImageHeight; ++i) {
@@ -489,12 +489,12 @@ void Spoteefax::displayNPV() {
   for (auto i = 0; i < title_offset; ++i) {
     file << " ";
   }
-  file << _now_playing.title.substr(0, 38);
+  file << _now_playing.title.substr(0, 38).c_str();
   file.write(kNpv + kNpvTitleOffset, kNpvArtistOffset - kNpvTitleOffset);
   for (auto i = 0; i < artist_offset; ++i) {
     file << " ";
   }
-  file << _now_playing.artist.substr(0, 40);
+  file << _now_playing.artist.substr(0, 40).c_str();
   file.write(kNpv + kNpvArtistOffset, strlen(kNpv) - kNpvArtistOffset);
 }
 
