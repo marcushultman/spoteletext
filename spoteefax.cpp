@@ -120,6 +120,14 @@ void fixWideChars(std::string &str) {
     }
     break;
   }
+  for (;;) {
+    index = str.find("é");
+    if (index != std::string::npos) {
+      str.replace(index, 2, "`");
+      continue;
+    }
+    break;
+  }
 }
 
 }  // namespace
