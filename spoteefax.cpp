@@ -32,7 +32,7 @@ struct DeviceFlowData {
   jsproperty::extractor interval_str{"interval"};
   operator bool() { return device_code && user_code && verification_url && interval_str; }
 
-  std::chrono::seconds interval() const {
+  std::chrono::seconds interval() {
     return std::chrono::seconds{std::stoi(interval_str->c_str())};
   }
 };
@@ -92,6 +92,34 @@ size_t bufferArray(char *ptr, size_t size, size_t nmemb, void *obj) {
   auto &v = *static_cast<std::vector<unsigned char>*>(obj);
   v.insert(v.end(), ptr, ptr + size);
   return size;
+}
+
+void fixWideChars(std::string &str) {
+  auto index = std::string::npos;
+  for (;;) {
+    index = str.find("å");
+    if (index != std::string::npos) {
+      str.replace(index, 2, "}");
+      continue;
+    }
+    break;
+  }
+  for (;;) {
+    index = str.find("ä");
+    if (index != std::string::npos) {
+      str.replace(index, 2, "{");
+      continue;
+    }
+    break;
+  }
+  for (;;) {
+    index = str.find("ö");
+    if (index != std::string::npos) {
+      str.replace(index, 2, "|");
+      continue;
+    }
+    break;
+  }
 }
 
 }  // namespace
@@ -322,6 +350,10 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
   filter(buffer, "\"images\"", 3, 2, image_height);
 
   if (context && title && artist) {
+    fixWideChars(*context);
+    fixWideChars(*title);
+    fixWideChars(*artist);
+
     if (*title == _now_playing.title) {
       return true;
     }

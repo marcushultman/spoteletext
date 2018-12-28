@@ -72,8 +72,8 @@ class extractor {
 
  public:
   operator bool() const { return _extracted; }
-  const std::string &operator*() const { return _value; }
-  const std::string *operator->() const { return &_value; }
+  std::string &operator*() { return _value; }
+  std::string *operator->() { return &_value; }
 
  private:
   const std::string _prop;
