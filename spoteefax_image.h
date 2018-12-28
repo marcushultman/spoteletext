@@ -9,9 +9,9 @@ namespace image {
 
 struct Color {
   const char code;
-  const char terminal_code;
+  const unsigned char terminal_code;
   const unsigned char _r, _g, _b;
-  Color(char code, int terminal_code, unsigned char r, unsigned char g, unsigned char b)
+  Color(char code, unsigned char terminal_code, unsigned char r, unsigned char g, unsigned char b)
       : code(code), terminal_code(terminal_code), _r(r), _g(g), _b(b) {}
 
   int distance(int r, int g, int b) const {
@@ -35,24 +35,24 @@ const std::array<Color, 8> kColors = {
 
 class Image {
  public:
-  Image(int width, int height);
-  int width() const { return _width; }
-  int height() const { return _height; }
+  Image(size_t width, size_t height);
+  size_t width() const { return _width; }
+  size_t height() const { return _height; }
   std::string line(size_t i) const { return _lines[i]; }
 
-  void setSrc(int src_width, int src_height, int src_comp, unsigned char *src);
+  void setSrc(size_t src_width, size_t src_height, int src_comp, unsigned char *src);
 
-  unsigned char get(int x, int y) const;
+  unsigned char get(size_t x, size_t y) const;
 
  private:
-  const Color *&pixel(int x, int y);
-  const Color *pixel(int x, int y) const;
+  const Color *&pixel(size_t x, size_t y);
+  const Color *pixel(size_t x, size_t y) const;
 
-  std::string renderRow(int y, const Color *background);
+  std::string renderRow(size_t y, const Color *background);
   unsigned char renderPixels(const Color **pixel, const Color *background);
 
-  const int _width;
-  const int _height;
+  const size_t _width;
+  const size_t _height;
   std::vector<const Color *> _pixels;
   std::vector<std::string> _lines;
 };

@@ -1,11 +1,8 @@
 #include "spoteefax_image.h"
 
 #include <algorithm>
-#include <iostream>
 #include <map>
-#include <set>
 #include <stdexcept>
-#include <string>
 #include <vector>
 
 namespace spoteefax {
@@ -51,18 +48,22 @@ const Color *topColor(const ColorMap &colors) {
 
 }  // namespace
 
-Image::Image(int width, int height)
+Image::Image(size_t width, size_t height)
     : _width{width}, _height{height}, _pixels(width * height * 6), _lines(height) {}
 
-const Color *&Image::pixel(int x, int y) {
+const Color *&Image::pixel(size_t x, size_t y) {
   return _pixels[(y / 3) * _width * 6 + (x / 2) * 6 + 2 * (y % 3) + (x % 2)];
 }
 
-const Color *Image::pixel(int x, int y) const {
+const Color *Image::pixel(size_t x, size_t y) const {
   return _pixels[(y / 3) * _width * 6 + (x / 2) * 6 + 2 * (y % 3) + (x % 2)];
 }
 
-void Image::setSrc(int src_width, int src_height, int src_comp, unsigned char *src) {
+unsigned char Image::get(size_t x, size_t y) const {
+  return pixel(x, y)->terminal_code;
+}
+
+void Image::setSrc(size_t src_width, size_t src_height, int src_comp, unsigned char *src) {
   if (src_comp != 3) {
     throw std::invalid_argument{"components not rgb"};
   }
@@ -71,18 +72,17 @@ void Image::setSrc(int src_width, int src_height, int src_comp, unsigned char *s
   const auto pixel_height = 3 * _height;
   const auto scale = static_cast<float>(src_height) / pixel_height;
 
-  for (auto y = 0; y < pixel_height; ++y) {
-    for (auto x = 0; x < pixel_width; ++x) {
+  for (auto y = 0u; y < pixel_height; ++y) {
+    for (auto x = 0u; x < pixel_width; ++x) {
       // downsample
-      auto src_x = std::min<unsigned long>(scale * x, src_width);
-      auto src_y = std::min<unsigned long>(scale * y, src_height);
+      auto src_x = std::min<size_t>(scale * x, src_width);
+      auto src_y = std::min<size_t>(scale * y, src_height);
       auto *rgb = &src[src_y * row_stride + src_x * src_comp];
       // map pixel to valid color
-      auto &color = getBestMatchingColor(rgb);
-      pixel(x, y) = &color;
+      pixel(x, y) = &getBestMatchingColor(rgb);
     }
   }
-  for (auto y = 0; y < _height; ++y) {
+  for (auto y = 0u; y < _height; ++y) {
     auto *row = &_pixels[y * _width * 6];
     auto colors = makeColorMap(row, row + _width * 6);
     if (colors.count(&kColors[0]) && colors[&kColors[0]] >= colors.size() * 6) {
@@ -93,7 +93,7 @@ void Image::setSrc(int src_width, int src_height, int src_comp, unsigned char *s
   }
 }
 
-std::string Image::renderRow(int y, const Color *background) {
+std::string Image::renderRow(size_t y, const Color *background) {
   auto *start = &_pixels[y * _width * 6];
   auto *end = &_pixels[(y + 1) * _width * 6];
   auto *pixel = start;
@@ -152,10 +152,6 @@ unsigned char Image::renderPixels(const Color **pixel, const Color *background) 
     }
   }
   return out;
-}
-
-unsigned char Image::get(int x, int y) const {
-  return pixel(x, y)->terminal_code;
 }
 
 }  // namespace image

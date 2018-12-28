@@ -96,7 +96,9 @@ size_t bufferArray(char *ptr, size_t size, size_t nmemb, void *obj) {
 
 }  // namespace
 
-Spoteefax::Spoteefax(const std::string &page_dir) : _out_file{page_dir + "/P100-3F7F.tti"}  {
+Spoteefax::Spoteefax(const std::string &page_dir)
+    : _out_file{page_dir + "/P100-3F7F.tti"},
+      _image{std::make_unique<image::Image>(20, 14)} {
   _curl = curl_easy_init();
 }
 
@@ -374,14 +376,14 @@ void Spoteefax::fetchImage(const std::string &url) {
   }
   jpeg_finish_decompress(&cinfo);
   jpeg_destroy_decompress(&cinfo);
+  buffer.clear();
 
-  _image = std::make_unique<image::Image>(20, 14);
   _image->setSrc(cinfo.output_width, cinfo.output_height, cinfo.output_components, &bmp_buffer[0]);
 
 #if !(RASPBIAN)
-  for (auto y = 0; y < 3 * _image->height(); ++y) {
+  for (auto y = 0u; y < 3 * _image->height(); ++y) {
     // Original
-    for (auto x = 0; x < 2 * _image->width(); ++x) {
+    for (auto x = 0u; x < 2 * _image->width(); ++x) {
       std::cerr << "\033[1;" << +_image->get(x, y) << "m  ";
     }
     std::cerr << "\033[0m    ";
