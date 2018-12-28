@@ -93,6 +93,12 @@ void Image::setSrc(size_t src_width, size_t src_height, int src_comp, unsigned c
   }
 }
 
+void Image::clear() {
+  for (auto &line : _lines) {
+    line.clear();
+  }
+}
+
 std::string Image::renderRow(size_t y, const Color *background) {
   auto *start = &_pixels[y * _width * 6];
   auto *end = &_pixels[(y + 1) * _width * 6];

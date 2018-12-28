@@ -41,6 +41,7 @@ class Image {
   std::string line(size_t i) const { return _lines[i]; }
 
   void setSrc(size_t src_width, size_t src_height, int src_comp, unsigned char *src);
+  void clear();
 
   unsigned char get(size_t x, size_t y) const;
 

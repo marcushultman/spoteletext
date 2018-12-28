@@ -325,9 +325,7 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
     if (*title == _now_playing.title) {
       return true;
     }
-    if (image) {
-      fetchImage(*image);
-    }
+    fetchImage(image ? *image : "");
     _now_playing = {"", *title, *artist};
 
     std::cerr << "context: " << _now_playing.context.c_str() << std::endl;
@@ -342,6 +340,11 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
 }
 
 void Spoteefax::fetchImage(const std::string &url) {
+  if (url.empty()) {
+    _image->clear();
+    return;
+  }
+
   curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
 
   std::vector<unsigned char> buffer;
