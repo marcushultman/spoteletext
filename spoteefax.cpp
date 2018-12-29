@@ -74,17 +74,15 @@ DeviceFlowData parseDeviceFlowData(jq_state *jq, const std::string &buffer) {
 }
 
 struct AuthCodeData {
-  jsproperty::extractor error{"error"};
-  jsproperty::extractor auth_code{"auth_code"};
-  operator bool() { return error || auth_code; }
+  std::string error;
+  std::string auth_code;
 };
 
-size_t extractAuthCodeData(char *ptr, size_t size, size_t nmemb, void *obj) {
-  auto &data = *static_cast<AuthCodeData*>(obj);
-  size *= nmemb;
-  data.error.feed(ptr, size);
-  data.auth_code.feed(ptr, size);
-  return size;
+AuthCodeData parseAuthCodeData(jq_state *jq, const std::string &buffer) {
+  const auto input = jv_parse(buffer.c_str());
+  jq_compile(jq, ".error, .auth_code");
+  jq_start(jq, input, 0);
+  return {nextStr(jq), nextStr(jq)};
 }
 
 struct TokenData {
@@ -251,19 +249,20 @@ Spoteefax::PollResult Spoteefax::tryAuth(const std::string &device_code, std::st
   curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, data.c_str());
   curl_easy_setopt(_curl, CURLOPT_URL, kAuthTokenUrl);
 
-  AuthCodeData res;
-  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res);
-  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, extractAuthCodeData);
+  std::string buffer;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
 
-  if (curl_easy_perform(_curl) || !res) {
+  if (curl_easy_perform(_curl)) {
     std::cerr << "failed to get auth_code or error" << std::endl;
     return kPollError;
   }
-  if (res.error) {
-    std::cerr << "auth_code error: " << res.error->c_str() << std::endl;
-    return *res.error == "authorization_pending" ? kPollWait : kPollError;
+  auto res = parseAuthCodeData(_jq, buffer);
+  if (!res.error.empty()) {
+    std::cerr << "auth_code error: " << res.error << std::endl;
+    return res.error == "authorization_pending" ? kPollWait : kPollError;
   }
-  auth_code = *res.auth_code;
+  auth_code = res.auth_code;
   return kPollSuccess;
 }
 
