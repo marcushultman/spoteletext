@@ -13,9 +13,12 @@ extern "C" {
 namespace spoteefax {
 
 struct NowPlaying {
+  std::string track_id;
+  std::string context_href;
   std::string context;
   std::string title;
   std::string artist;
+  std::string image;
 };
 
 class Spoteefax {
