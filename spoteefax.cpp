@@ -86,22 +86,20 @@ AuthCodeData parseAuthCodeData(jq_state *jq, const std::string &buffer) {
 }
 
 struct TokenData {
-  jsproperty::extractor access_token{"access_token"};
-  // jsproperty::extractor token_type{"token_type"};  // "Bearer";
-  // jsproperty::extractor expires_in{"expires_in"};  // std::chrono::seconds{3600};
-  jsproperty::extractor refresh_token{"refresh_token"};
-  // jsproperty::extractor scope{"scope"};
-  // jsproperty::extractor client_id{"client_id"};
-  // jsproperty::extractor client_secret{"client_secret"};
-  operator bool() { return access_token; }
+  std::string access_token;
+  // std::string token_type;  // "Bearer";
+  // std::chrono::seconds expires_in;  // 3600;
+  std::string refresh_token;
+  // std::string scope;
+  // std::string client_id;
+  // std::string client_secret;
 };
 
-size_t extractTokenData(char *ptr, size_t size, size_t nmemb, void *obj) {
-  auto &data = *static_cast<TokenData*>(obj);
-  size *= nmemb;
-  data.access_token.feed(ptr, size);
-  data.refresh_token.feed(ptr, size);
-  return size;
+TokenData parseTokenData(jq_state *jq, const std::string &buffer) {
+  auto input = jv_parse(buffer.c_str());
+  jq_compile(jq, ".access_token, .refresh_token");
+  jq_start(jq, input, 0);
+  return {nextStr(jq), nextStr(jq)};
 }
 
 size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
@@ -277,20 +275,20 @@ bool Spoteefax::fetchTokens(const std::string &code) {
   curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, data.c_str());
   curl_easy_setopt(_curl, CURLOPT_URL, kAuthTokenUrl);
 
-  TokenData res;
-  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res);
-  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, extractTokenData);
+  std::string buffer;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
 
-  long status{};
-  if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || !res || status != 200) {
+  if (curl_perform_and_check(_curl)) {
     std::cerr << "failed to get token" << std::endl;
     return false;
   }
-  std::cerr << "access_token: " << res.access_token->c_str() << std::endl;
-  std::cerr << "refresh_token: " << res.refresh_token->c_str() << std::endl;
+  auto res = parseTokenData(_jq, buffer);
+  std::cerr << "access_token: " << res.access_token << std::endl;
+  std::cerr << "refresh_token: " << res.refresh_token << std::endl;
 
-  _access_token = *res.access_token;
-  _refresh_token = *res.refresh_token;
+  _access_token = res.access_token;
+  _refresh_token = res.refresh_token;
   return true;
 }
 
@@ -305,18 +303,18 @@ bool Spoteefax::refreshToken() {
   curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, data.c_str());
   curl_easy_setopt(_curl, CURLOPT_URL, kAuthTokenUrl);
 
-  TokenData res;
-  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res);
-  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, extractTokenData);
+  std::string buffer;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
 
-  long status{};
-  if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || !res || status != 200) {
+  if (curl_perform_and_check(_curl)) {
     std::cerr << "failed to refresh token" << std::endl;
     return false;
   }
-  std::cerr << "access_token: " << res.access_token->c_str() << std::endl;
+  auto res = parseTokenData(_jq, buffer);
+  std::cerr << "access_token: " << res.access_token << std::endl;
 
-  _access_token = *res.access_token;
+  _access_token = res.access_token;
 
   curl_easy_reset(_curl);
   return true;
