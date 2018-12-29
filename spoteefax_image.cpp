@@ -48,8 +48,10 @@ const Color *topColor(const ColorMap &colors) {
 
 }  // namespace
 
-Image::Image(size_t width, size_t height)
-    : _width{width}, _height{height}, _pixels(width * height * 6), _lines(height) {}
+Image::Image(size_t width, size_t height) : _width{width}, _height{height} {
+  _pixels.resize(width * height * 6);
+  _lines.resize(height);
+}
 
 const Color *&Image::pixel(size_t x, size_t y) {
   return _pixels[(y / 3) * _width * 6 + (x / 2) * 6 + 2 * (y % 3) + (x % 2)];
