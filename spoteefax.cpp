@@ -102,6 +102,13 @@ TokenData parseTokenData(jq_state *jq, const std::string &buffer) {
   return {nextStr(jq), nextStr(jq)};
 }
 
+std::string parseContext(jq_state *jq, const std::string &buffer) {
+  auto input = jv_parse(buffer.c_str());
+  jq_compile(jq, ".name");
+  jq_start(jq, input, 0);
+  return nextStr(jq);
+}
+
 size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
   size *= nmemb;
   static_cast<std::string*>(obj)->append(ptr, size);
@@ -424,25 +431,7 @@ void Spoteefax::fetchContext(const std::string &url) {
     std::cerr << "failed to fetch context" << std::endl;
     return;
   }
-  auto input = jv_parse(buffer.c_str());
-  if (!jv_is_valid(input)) {
-    jv_free(input);
-    return;
-  }
-
-  jq_compile(_jq, ".name");
-  jq_start(_jq, input, 0);
-  auto name = jq_next(_jq);
-
-  if (!jv_is_valid(name)) {
-    jv_free(input);
-    jv_free(name);
-    return;
-  }
-  _now_playing.context = jv_string_value(name);
-
-  jv_free(input);
-  jv_free(name);
+  _now_playing.context = parseContext(_jq, buffer);
 }
 
 void Spoteefax::fetchImage(const std::string &url) {
