@@ -62,7 +62,7 @@ std::chrono::seconds nextSeconds(jq_state *jq) {
 struct DeviceFlowData {
   std::string device_code;
   std::string user_code;
-  // std::chrono::seconds expires_in;  // 3599
+  std::chrono::seconds expires_in;
   std::string verification_url;
   std::string verification_url_prefilled;
   std::chrono::seconds interval;
@@ -70,9 +70,9 @@ struct DeviceFlowData {
 
 DeviceFlowData parseDeviceFlowData(jq_state *jq, const std::string &buffer) {
   const auto input = jv_parse(buffer.c_str());
-  jq_compile(jq, ".device_code, .user_code, .verification_url, .verification_url_prefilled, .interval");
+  jq_compile(jq, ".device_code, .user_code, .expires_in, .verification_url, .verification_url_prefilled, .interval");
   jq_start(jq, input, 0);
-  return {nextStr(jq), nextStr(jq), nextStr(jq), nextStr(jq), nextSeconds(jq)};
+  return {nextStr(jq), nextStr(jq), nextSeconds(jq), nextStr(jq), nextStr(jq), nextSeconds(jq)};
 }
 
 struct AuthCodeData {
@@ -223,20 +223,22 @@ void Spoteefax::authenticate() {
     auto res = parseDeviceFlowData(_jq, buffer);
     std::cerr << "url: " << res.verification_url_prefilled << std::endl;
 
-    if (authenticateCode(res.device_code, res.user_code, res.verification_url, res.interval)) {
+    if (authenticateCode(res.device_code, res.user_code, res.verification_url, res.expires_in, res.interval)) {
       return;
     }
+    std::cerr << "failed to authenticate. retrying..." << std::endl;
   }
 }
 
 bool Spoteefax::authenticateCode(const std::string &device_code,
                                  const std::string &user_code,
                                  const std::string &verification_url,
+                                 const std::chrono::seconds &expires_in,
                                  const std::chrono::seconds &interval) {
   displayCode(user_code, verification_url);
 
   std::string auth_code;
-  if (!poll(device_code, interval, auth_code)) {
+  if (!poll(device_code, expires_in, interval, auth_code)) {
     return false;
   }
   if (!fetchTokens(auth_code)) {
@@ -246,13 +248,19 @@ bool Spoteefax::authenticateCode(const std::string &device_code,
 }
 
 bool Spoteefax::poll(const std::string &device_code,
+                     const std::chrono::seconds &expires_in,
                      const std::chrono::seconds &interval,
                      std::string &auth_code) {
+  using std::chrono::system_clock;
+  auto expiry = system_clock::now() + expires_in;
   while (auto res = tryAuth(device_code, auth_code)) {
     if (res == kPollError) {
       return false;
     }
     std::this_thread::sleep_for(interval);
+    if (system_clock::now() >= expiry) {
+      return false;
+    }
   }
   return true;
 }
