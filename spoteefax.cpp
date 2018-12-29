@@ -33,23 +33,23 @@ bool curl_perform_and_check(CURL *curl) {
 }
 
 std::string nextStr(jq_state *jq) {
-  auto jv = jq_next(jq);
+  const auto jv = jq_next(jq);
   if (jv_get_kind(jv) != JV_KIND_STRING) {
     jv_free(jv);
     return "";
   }
-  auto val = std::string{jv_string_value(jv)};
+  const auto val = std::string{jv_string_value(jv)};
   jv_free(jv);
   return val;
 }
 
 double nextNumber(jq_state *jq) {
-  auto jv = jq_next(jq);
+  const auto jv = jq_next(jq);
   if (jv_get_kind(jv) != JV_KIND_NUMBER) {
     jv_free(jv);
     return 0;
   }
-  auto val = jv_number_value(jv);
+  const auto val = jv_number_value(jv);
   jv_free(jv);
   return val;
 }
@@ -98,14 +98,14 @@ struct TokenData {
 };
 
 TokenData parseTokenData(jq_state *jq, const std::string &buffer) {
-  auto input = jv_parse(buffer.c_str());
+  const auto input = jv_parse(buffer.c_str());
   jq_compile(jq, ".access_token, .refresh_token");
   jq_start(jq, input, 0);
   return {nextStr(jq), nextStr(jq)};
 }
 
 NowPlaying parseNowPlaying(jq_state *jq, const std::string &buffer) {
-  auto input = jv_parse(buffer.c_str());
+  const auto input = jv_parse(buffer.c_str());
   jq_compile(jq,
     ".item.id,"
     ".context.href,"
@@ -117,7 +117,7 @@ NowPlaying parseNowPlaying(jq_state *jq, const std::string &buffer) {
 }
 
 std::string parseContext(jq_state *jq, const std::string &buffer) {
-  auto input = jv_parse(buffer.c_str());
+  const auto input = jv_parse(buffer.c_str());
   jq_compile(jq, ".name");
   jq_start(jq, input, 0);
   return nextStr(jq);
