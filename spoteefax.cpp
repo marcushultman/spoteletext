@@ -8,8 +8,6 @@
 #include <iostream>
 #include <thread>
 #include <vector>
-#include "jsp_filter.h"
-#include "jspextractor.h"
 #include "spclient.h"
 #include "sptemplates.h"
 
