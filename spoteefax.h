@@ -12,18 +12,18 @@ extern "C" {
 
 namespace spoteefax {
 
+struct NowPlaying {
+  std::string context;
+  std::string title;
+  std::string artist;
+};
+
 class Spoteefax {
  private:
   enum PollResult {
     kPollSuccess = 0,
     kPollWait,
     kPollError,
-  };
-
-  struct NowPlaying {
-    std::string context;
-    std::string title;
-    std::string artist;
   };
 
  public:
