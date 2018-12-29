@@ -168,12 +168,12 @@ Spoteefax::Spoteefax(const std::string &page_dir)
 }
 
 Spoteefax::~Spoteefax() {
+  if (_jq) {
+    jq_teardown(&_jq);
+  }
   if (_curl) {
     curl_easy_cleanup(_curl);
     _curl = nullptr;
-  }
-  if (_jq) {
-    jq_teardown(&_jq);
   }
 }
 

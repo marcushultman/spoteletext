@@ -55,9 +55,6 @@ class Spoteefax {
   void displayCode(const std::string &code, const std::string &verification_url);
   void displayNPV();
 
-  CURL *_curl{nullptr};
-  jq_state *_jq{nullptr};
-
   std::string _access_token;
   std::string _refresh_token;
   std::chrono::seconds _expires_in;
@@ -66,6 +63,9 @@ class Spoteefax {
 
   NowPlaying _now_playing;
   std::unique_ptr<image::Image> _image;
+
+  CURL *_curl{nullptr};
+  jq_state *_jq{nullptr};
 };
 
 }
