@@ -30,29 +30,47 @@ bool curl_perform_and_check(CURL *curl) {
          status != 200;
 }
 
-struct DeviceFlowData {
-  jsproperty::extractor device_code{"device_code"};
-  jsproperty::extractor user_code{"user_code"};
-  // jsproperty::extractor expires_in{"expires_in"};  // 3599
-  jsproperty::extractor verification_url{"verification_url"};
-  jsproperty::extractor verification_url_prefilled{"verification_url_prefilled"};  // https://spotify.com/pair?code\u003dXXXXXX
-  jsproperty::extractor interval_str{"interval"};
-  operator bool() { return device_code && user_code && verification_url && interval_str; }
-
-  std::chrono::seconds interval() {
-    return std::chrono::seconds{std::stoi(interval_str->c_str())};
+std::string nextStr(jq_state *jq) {
+  auto jv = jq_next(jq);
+  if (jv_get_kind(jv) != JV_KIND_STRING) {
+    jv_free(jv);
+    return "";
   }
+  auto val = std::string{jv_string_value(jv)};
+  jv_free(jv);
+  return val;
+}
+
+double nextNumber(jq_state *jq) {
+  auto jv = jq_next(jq);
+  if (jv_get_kind(jv) != JV_KIND_NUMBER) {
+    jv_free(jv);
+    return 0;
+  }
+  auto val = jv_number_value(jv);
+  jv_free(jv);
+  return val;
+}
+
+std::chrono::seconds nextSeconds(jq_state *jq) {
+  using sec = std::chrono::seconds;
+  return sec{static_cast<sec::rep>(nextNumber(jq))};
+}
+
+struct DeviceFlowData {
+  std::string device_code;
+  std::string user_code;
+  // std::chrono::seconds expires_in;  // 3599
+  std::string verification_url;
+  std::string verification_url_prefilled;
+  std::chrono::seconds interval;
 };
 
-size_t extractDeviceFlowData(char *ptr, size_t size, size_t nmemb, void *obj) {
-  auto &data = *static_cast<DeviceFlowData*>(obj);
-  size *= nmemb;
-  data.device_code.feed(ptr, size);
-  data.user_code.feed(ptr, size);
-  data.verification_url.feed(ptr, size);
-  data.verification_url_prefilled.feed(ptr, size);
-  data.interval_str.feed(ptr, size);
-  return size;
+DeviceFlowData parseDeviceFlowData(jq_state *jq, const std::string &buffer) {
+  const auto input = jv_parse(buffer.c_str());
+  jq_compile(jq, ".device_code, .user_code, .verification_url, .verification_url_prefilled, .interval");
+  jq_start(jq, input, 0);
+  return {nextStr(jq), nextStr(jq), nextStr(jq), nextStr(jq), nextSeconds(jq)};
 }
 
 struct AuthCodeData {
@@ -177,19 +195,18 @@ void Spoteefax::authenticate() {
     curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, data.c_str());
     curl_easy_setopt(_curl, CURLOPT_URL, kAuthDeviceCodeUrl);
 
-    DeviceFlowData res;
-    curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &res);
-    curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, extractDeviceFlowData);
+    std::string buffer;
+    curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+    curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
 
-    long status{};
-    if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || !res || status != 200) {
+    if (curl_perform_and_check(_curl)) {
       std::cerr << "failed to get device_code" << std::endl;
       return;
     }
-    std::cerr << "user_code: " << res.user_code->c_str() << std::endl;
-    std::cerr << "url: " << res.verification_url_prefilled->c_str() << std::endl;
+    auto res = parseDeviceFlowData(_jq, buffer);
+    std::cerr << "url: " << res.verification_url_prefilled << std::endl;
 
-    if (authenticateCode(*res.device_code, *res.user_code, *res.verification_url, res.interval())) {
+    if (authenticateCode(res.device_code, res.user_code, res.verification_url, res.interval)) {
       return;
     }
   }
