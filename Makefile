@@ -4,7 +4,7 @@ CC=g++
 #Set any compiler flags you want to use (e.g. "-I."), or leave blank
 CXXFLAGS = -g -O2 -Wall -std=c++14 -fstack-protector-all -Wextra -I. -I/usr/local/include
 
-LIBS = -lpthread -fstack-protector -lcurl -ljpeg -L/usr/local/lib
+LIBS = -lpthread -fstack-protector -lcurl -ljq -ljpeg -L/usr/local/lib
 
 ifeq ($(OS),Windows_NT)
 	CXXFLAGS += -DWIN32

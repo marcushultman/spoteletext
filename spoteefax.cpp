@@ -23,6 +23,13 @@ const auto kPlayerUrl = "https://api.spotify.com/v1/me/player";
 const auto kContentTypeXWWWFormUrlencoded = "Content-Type: application/x-www-form-urlencoded";
 const auto kAuthorizationBearer = "Authorization: Bearer ";
 
+bool curl_perform_and_check(CURL *curl) {
+  long status{0};
+  return curl_easy_perform(curl) ||
+         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status) ||
+         status != 200;
+}
+
 struct DeviceFlowData {
   jsproperty::extractor device_code{"device_code"};
   jsproperty::extractor user_code{"user_code"};
@@ -136,6 +143,7 @@ Spoteefax::Spoteefax(const std::string &page_dir)
     : _out_file{page_dir + "/P100-3F7F.tti"},
       _image{std::make_unique<image::Image>(20, 14)} {
   _curl = curl_easy_init();
+  _jq = jq_init();
 }
 
 Spoteefax::~Spoteefax() {
@@ -143,10 +151,13 @@ Spoteefax::~Spoteefax() {
     curl_easy_cleanup(_curl);
     _curl = nullptr;
   }
+  if (_jq) {
+    jq_teardown(&_jq);
+  }
 }
 
 int Spoteefax::run() {
-  if (!_curl) {
+  if (!_curl || !_jq) {
     return 1;
   }
   std::remove(_out_file.c_str());
@@ -350,7 +361,11 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
     return true;
   }
 
-  jsproperty::extractor context{"href"}, title{"name"}, artist{"name"}, image{"url"}, image_height{"height"};
+  jsproperty::extractor context{"href"},
+                        title{"name"},
+                        artist{"name"},
+                        image{"url"},
+                        image_height{"height"};
   filter(buffer, "\"context\"", 1, 0, context);
   filter(buffer, "\"item\"", 1, 0, title);
   filter(buffer, "\"artists\"", 2, 0, artist);
@@ -358,15 +373,16 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
   filter(buffer, "\"images\"", 3, 2, image_height);
 
   if (context && title && artist) {
-    fixWideChars(*context);
     fixWideChars(*title);
     fixWideChars(*artist);
 
     if (*title == _now_playing.title) {
       return true;
     }
-    fetchImage(image ? *image : "");
+
     _now_playing = {"", *title, *artist};
+    fetchContext(*context);
+    fetchImage(image ? *image : "");
 
     std::cerr << "context: " << _now_playing.context.c_str() << std::endl;
     std::cerr << "track_name: " << _now_playing.title.c_str() << std::endl;
@@ -377,6 +393,42 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
   }
 
   return true;
+}
+
+void Spoteefax::fetchContext(const std::string &url) {
+  const auto auth_header = kAuthorizationBearer + _access_token;
+  const auto header = curl_slist_append(nullptr, auth_header.c_str());
+
+  curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
+  curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
+
+  std::string buffer;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
+
+  if (curl_perform_and_check(_curl)) {
+    std::cerr << "failed to fetch context" << std::endl;
+    return;
+  }
+  auto input = jv_parse(buffer.c_str());
+  if (!jv_is_valid(input)) {
+    jv_free(input);
+    return;
+  }
+
+  jq_compile(_jq, ".name");
+  jq_start(_jq, input, 0);
+  auto name = jq_next(_jq);
+
+  if (!jv_is_valid(name)) {
+    jv_free(input);
+    jv_free(name);
+    return;
+  }
+  _now_playing.context = jv_string_value(name);
+
+  jv_free(input);
+  jv_free(name);
 }
 
 void Spoteefax::fetchImage(const std::string &url) {

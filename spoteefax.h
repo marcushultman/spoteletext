@@ -6,6 +6,10 @@
 #include <curl/curl.h>
 #include "spoteefax_image.h"
 
+extern "C" {
+#include <jq.h>
+}
+
 namespace spoteefax {
 
 class Spoteefax {
@@ -46,20 +50,22 @@ class Spoteefax {
   void loop();
 
   bool fetchNowPlaying(bool retry);
+  void fetchContext(const std::string &url);
   void fetchImage(const std::string &url);
   void displayCode(const std::string &code, const std::string &verification_url);
   void displayNPV();
 
-  // todo: image handling
-  std::string _out_file;
-  std::unique_ptr<image::Image> _image;
-
-  NowPlaying _now_playing;
-
   CURL *_curl{nullptr};
+  jq_state *_jq{nullptr};
+
   std::string _access_token;
   std::string _refresh_token;
   std::chrono::seconds _expires_in;
+
+  std::string _out_file;
+
+  NowPlaying _now_playing;
+  std::unique_ptr<image::Image> _image;
 };
 
 }
