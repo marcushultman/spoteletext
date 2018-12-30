@@ -12,7 +12,7 @@ using ColorMap = std::map<const Color *, size_t>;
 
 const Color &getBestMatchingColor(unsigned char *rgb) {
   auto min_distance = 3 * 255 * 255;
-  const Color *best_matching;
+  const Color *best_matching = nullptr;
   for (auto &color : kColors) {
     const auto distance = color.distance(rgb[0], rgb[1], rgb[2]);
     if (distance <= min_distance) {
