@@ -238,7 +238,7 @@ bool Spoteefax::authenticateCode(const std::string &device_code,
   displayCode(user_code, verification_url);
 
   std::string auth_code;
-  if (!poll(device_code, expires_in, interval, auth_code)) {
+  if (!getAuthCode(device_code, expires_in, interval, auth_code)) {
     return false;
   }
   if (!fetchTokens(auth_code)) {
@@ -247,14 +247,14 @@ bool Spoteefax::authenticateCode(const std::string &device_code,
   return true;
 }
 
-bool Spoteefax::poll(const std::string &device_code,
-                     const std::chrono::seconds &expires_in,
-                     const std::chrono::seconds &interval,
-                     std::string &auth_code) {
+bool Spoteefax::getAuthCode(const std::string &device_code,
+                            const std::chrono::seconds &expires_in,
+                            const std::chrono::seconds &interval,
+                            std::string &auth_code) {
   using std::chrono::system_clock;
   auto expiry = system_clock::now() + expires_in;
-  while (auto res = tryAuth(device_code, auth_code)) {
-    if (res == kPollError) {
+  while (auto err = pollAuthCode(device_code, auth_code)) {
+    if (err == kPollError) {
       return false;
     }
     std::this_thread::sleep_for(interval);
@@ -265,7 +265,8 @@ bool Spoteefax::poll(const std::string &device_code,
   return true;
 }
 
-Spoteefax::PollResult Spoteefax::tryAuth(const std::string &device_code, std::string &auth_code) {
+Spoteefax::PollResult Spoteefax::pollAuthCode(
+    const std::string &device_code, std::string &auth_code) {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
       "&code=" + device_code +

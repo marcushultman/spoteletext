@@ -43,11 +43,11 @@ class Spoteefax {
                         const std::string &verification_url,
                         const std::chrono::seconds &expires_in,
                         const std::chrono::seconds &interval);
-  bool poll(const std::string &device_code,
-            const std::chrono::seconds &expires_in,
-            const std::chrono::seconds &interval,
-            std::string &auth_code);
-  PollResult tryAuth(const std::string &device_code, std::string &auth_code);
+  bool getAuthCode(const std::string &device_code,
+                   const std::chrono::seconds &expires_in,
+                   const std::chrono::seconds &interval,
+                   std::string &auth_code);
+  PollResult pollAuthCode(const std::string &device_code, std::string &auth_code);
   bool fetchTokens(const std::string &auth_code);
   bool refreshToken();
 
