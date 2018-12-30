@@ -513,7 +513,7 @@ void Spoteletext::displayCode(const std::string &code, const std::string &url) {
   for (auto i = 0u; i < code_offset; ++i) {
     file << " ";
   }
-  file << " " << code.c_str();
+  file << code.c_str();
   file.write(kPair + kPairCodeOffset, strlen(kPair) - kPairCodeOffset);
 }
 
