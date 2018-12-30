@@ -4,7 +4,6 @@
 #include <cstdio>
 #include <cstring>
 #include <fstream>
-#include <jpeglib.h>
 #include <iostream>
 #include <map>
 #include <thread>
@@ -167,27 +166,13 @@ std::string toCP1106(std::string str) {
 
 }  // namespace
 
-Spoteletext::Spoteletext(const std::string &page_dir)
-    : _out_file{page_dir + "/P100-3F7F.tti"},
-      _image{std::make_unique<teletext::Image>(20, 14)} {
-  _curl = curl_easy_init();
-  _jq = jq_init();
-}
-
-Spoteletext::~Spoteletext() {
-  if (_jq) {
-    jq_teardown(&_jq);
-  }
-  if (_curl) {
-    curl_easy_cleanup(_curl);
-    _curl = nullptr;
-  }
-}
+Spoteletext::Spoteletext(CURL *curl, jq_state *jq, const std::string &page_dir)
+    : _curl{curl},
+      _jq{jq},
+      _out_file{page_dir + "/P100-3F7F.tti"},
+      _image{std::make_unique<teletext::Image>(20, 14)} {}
 
 int Spoteletext::run() {
-  if (!_curl || !_jq) {
-    return 1;
-  }
   std::remove(_out_file.c_str());
   authenticate();
   loop();

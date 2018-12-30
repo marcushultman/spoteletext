@@ -4,6 +4,7 @@
 #include <memory>
 #include <string>
 #include <curl/curl.h>
+#include <jpeglib.h>
 #include "image.h"
 
 extern "C" {
@@ -30,8 +31,8 @@ class Spoteletext {
   };
 
  public:
-  Spoteletext(const std::string &page_dir);
-  ~Spoteletext();
+  Spoteletext(CURL *curl, jq_state *jq, const std::string &page_dir);
+  ~Spoteletext() = default;
 
   int run();
 
@@ -61,6 +62,9 @@ class Spoteletext {
   void displayCode(const std::string &code, const std::string &verification_url);
   void displayNPV();
 
+  CURL *_curl{nullptr};
+  jq_state *_jq{nullptr};
+
   std::string _access_token;
   std::string _refresh_token;
 
@@ -68,9 +72,6 @@ class Spoteletext {
 
   NowPlaying _now_playing;
   std::unique_ptr<teletext::Image> _image;
-
-  CURL *_curl{nullptr};
-  jq_state *_jq{nullptr};
 };
 
 }  // namespace teletext
