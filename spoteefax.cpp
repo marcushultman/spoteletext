@@ -445,41 +445,38 @@ void Spoteefax::fetchContext(const std::string &url) {
 void Spoteefax::fetchImage(const std::string &url) {
   curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
 
-  std::vector<unsigned char> buffer;
-  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+  std::vector<unsigned char> encoded;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &encoded);
   curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferArray);
 
-  long status{};
-  if (curl_easy_perform(_curl) || curl_easy_getinfo(_curl, CURLINFO_RESPONSE_CODE, &status) || status != 200) {
-    std::cerr << "failed to fetch image (" << status << ")" << std::endl;
+  if (curl_perform_and_check(_curl)) {
+    std::cerr << "failed to fetch image" << std::endl;
     return;
   }
 
   struct jpeg_decompress_struct cinfo;
   struct jpeg_error_mgr jerr;
-
   cinfo.err = jpeg_std_error(&jerr);
   jpeg_create_decompress(&cinfo);
-  jpeg_mem_src(&cinfo, &buffer[0], buffer.size());
+  jpeg_mem_src(&cinfo, &encoded[0], encoded.size());
 
-  auto result = jpeg_read_header(&cinfo, TRUE);
-  if (result != 1) {
+  if (jpeg_read_header(&cinfo, TRUE) != JPEG_HEADER_OK) {
     return;
   }
   jpeg_start_decompress(&cinfo);
 
   const auto row_stride = cinfo.output_width * cinfo.output_components;
-  std::vector<unsigned char> bmp_buffer(cinfo.output_height * row_stride);
+  std::vector<unsigned char> buffer(cinfo.output_height * row_stride);
 
   while (cinfo.output_scanline < cinfo.output_height) {
-    auto *buffer = &bmp_buffer[cinfo.output_scanline * row_stride];
-    jpeg_read_scanlines(&cinfo, &buffer, 1);
+    auto *row = &buffer[cinfo.output_scanline * row_stride];
+    jpeg_read_scanlines(&cinfo, &row, 1);
   }
   jpeg_finish_decompress(&cinfo);
   jpeg_destroy_decompress(&cinfo);
-  buffer.clear();
+  encoded.clear();
 
-  _image->setSrc(cinfo.output_width, cinfo.output_height, cinfo.output_components, &bmp_buffer[0]);
+  _image->setSrc(cinfo.output_width, cinfo.output_height, cinfo.output_components, &buffer[0]);
 
 #if !(RASPBIAN)
   for (auto y = 0u; y < 3 * _image->height(); ++y) {
