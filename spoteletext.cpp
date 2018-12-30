@@ -211,7 +211,9 @@ void Spoteletext::authenticate() {
 
     if (curl_perform_and_check(_curl)) {
       std::cerr << "failed to get device_code" << std::endl;
-      return;
+      std::this_thread::sleep_for(std::chrono::seconds{5});
+      std::cerr << "retrying..." << std::endl;
+      continue;
     }
     auto res = parseDeviceFlowData(_jq, buffer);
     std::cerr << "url: " << res.verification_url_prefilled << std::endl;
