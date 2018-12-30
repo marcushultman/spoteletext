@@ -359,16 +359,16 @@ void Spoteletext::loop() {
 void Spoteletext::displayCode(const std::string &code, const std::string &url) {
   std::cerr << "display code: " << code.c_str() << std::endl;
   using namespace templates;
-  const auto url_offset = std::max<int>(0, (36 - url.size()) / 2);
-  const auto code_offset = std::max<int>(0, (36 - code.size()) / 2);
+  const auto url_offset = (38 - url.substr(0, 38).size()) / 2;
+  const auto code_offset = (38 - code.substr(0, 38).size()) / 2;
   std::ofstream file{_out_file, std::ofstream::binary};
   file.write(kPair, kPairUrlOffset);
-  for (auto i = 0; i < url_offset; ++i) {
+  for (auto i = 0u; i < url_offset; ++i) {
     file << " ";
   }
   file << url.c_str();
   file.write(kPair + kPairUrlOffset, kPairCodeOffset - kPairUrlOffset);
-  for (auto i = 0; i < code_offset; ++i) {
+  for (auto i = 0u; i < code_offset; ++i) {
     file << " ";
   }
   file << " " << code.c_str();
