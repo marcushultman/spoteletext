@@ -532,8 +532,8 @@ void Spoteletext::displayNPV() {
   file << " " << _now_playing.context.c_str();
 
   file.write(kNpv + kNpvContextOffset, kNpvImageOffset - kNpvContextOffset);
-  for (auto line = kNpvImageLineBegin; line < kNpvImageLineEnd; ++line) {
-    file << "OL," << line << ",         " << _image->line(line) << "\n";
+  for (auto line = kNpvImageLineBegin, i = 0; line < kNpvImageLineEnd; ++line, ++i) {
+    file << "OL," << line << ",         " << _image->line(i) << "\n";
   }
 
   file.write(kNpv + kNpvImageOffset, kNpvTitleOffset - kNpvImageOffset);
