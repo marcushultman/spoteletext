@@ -4,8 +4,7 @@
 #include <string>
 #include <vector>
 
-namespace spoteefax {
-namespace image {
+namespace teletext {
 
 struct Color {
   const char code;
@@ -23,7 +22,7 @@ struct Color {
 };
 
 const std::array<Color, 8> kColors = {
-    Color{'\\', 40, 0, 0, 0},        // black
+    Color{' ', 40, 0, 0, 0},        // black
     Color{'Q', 41, 255, 0, 0},      // red
     Color{'R', 42, 0, 255, 0},      // green
     Color{'S', 43, 255, 255, 0},    // yellow
@@ -58,5 +57,4 @@ class Image {
   std::vector<std::string> _lines;
 };
 
-}  // namespace image
-}  // namespace spoteefax
+}  // namespace teletext

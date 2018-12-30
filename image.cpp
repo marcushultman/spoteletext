@@ -1,12 +1,11 @@
-#include "spoteefax_image.h"
+#include "image.h"
 
 #include <algorithm>
 #include <map>
 #include <stdexcept>
 #include <vector>
 
-namespace spoteefax {
-namespace image {
+namespace teletext {
 namespace {
 
 using ColorMap = std::map<const Color *, size_t>;
@@ -162,5 +161,4 @@ unsigned char Image::renderPixels(const Color **pixel, const Color *background) 
   return out;
 }
 
-}  // namespace image
-}  // namespace spoteefax
+}  // namespace teletext

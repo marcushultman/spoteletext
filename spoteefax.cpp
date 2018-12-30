@@ -176,7 +176,7 @@ void fixWideChars(std::string &str) {
 
 Spoteefax::Spoteefax(const std::string &page_dir)
     : _out_file{page_dir + "/P100-3F7F.tti"},
-      _image{std::make_unique<image::Image>(20, 14)} {
+      _image{std::make_unique<teletext::Image>(20, 14)} {
   _curl = curl_easy_init();
   _jq = jq_init();
 }
@@ -488,18 +488,18 @@ void Spoteefax::fetchImage(const std::string &url) {
 
     // Reconstructed
     auto line = _image->line(y / 3);
-    auto *bg = &image::kColors[0];
-    auto *fg = &image::kColors[0];
+    auto *bg = &teletext::kColors[0];
+    auto *fg = &teletext::kColors[0];
 
     for (auto it = line.begin(); it != line.end(); ++it) {
       if (*it == '\u001b') {
         ++it;
         if (*it == ']' || *it == '\\') {
-          bg = *it == '\\' ? &image::kColors[0] : fg;
+          bg = *it == '\\' ? &teletext::kColors[0] : fg;
           std::cerr << "\033[1;" << +bg->terminal_code << "mb" << +bg->terminal_code << ".";
         } else {
           fg = std::find_if(
-              image::kColors.begin(), image::kColors.end(), [it](auto &c) { return c.code == *it; });
+              teletext::kColors.begin(), teletext::kColors.end(), [it](auto &c) { return c.code == *it; });
           std::cerr << "\033[1;" << +bg->terminal_code << "mf" << +fg->terminal_code << ".";
           std::cerr << "\033[1;" << +fg->terminal_code << "m";
         }

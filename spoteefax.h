@@ -4,7 +4,7 @@
 #include <memory>
 #include <string>
 #include <curl/curl.h>
-#include "spoteefax_image.h"
+#include "image.h"
 
 extern "C" {
 #include <jq.h>
@@ -66,7 +66,7 @@ class Spoteefax {
   std::string _out_file;
 
   NowPlaying _now_playing;
-  std::unique_ptr<image::Image> _image;
+  std::unique_ptr<teletext::Image> _image;
 
   CURL *_curl{nullptr};
   jq_state *_jq{nullptr};
