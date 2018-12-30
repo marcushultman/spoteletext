@@ -6,6 +6,7 @@
 #include <fstream>
 #include <jpeglib.h>
 #include <iostream>
+#include <map>
 #include <thread>
 #include <vector>
 #include "spclient.h"
@@ -136,40 +137,32 @@ size_t bufferArray(char *ptr, size_t size, size_t nmemb, void *obj) {
   return size;
 }
 
-void fixWideChars(std::string &str) {
+// NRC Swedish
+std::string toCP1106(std::string str) {
+  static const std::map<std::string, char> CP1106 = {
+    // {"#", '#'},
+    {"É", '@'},
+    {"Ä", '['},
+    {"Ö", '\\'},
+    {"Å", ']'},
+    {"Ü", '^'},
+    // {"_", '_'},
+    {"é", '`'},
+    {"ä", '{'},
+    {"ö", '|'},
+    {"å", '}'},
+    {"ü", '~'},
+  };
   auto index = std::string::npos;
-  for (;;) {
-    index = str.find("å");
+  for (auto it = CP1106.begin(); it != CP1106.end();) {
+    index = str.find(it->first);
     if (index != std::string::npos) {
-      str.replace(index, 2, "}");
+      str.replace(index, it->first.size(), 1, it->second);
       continue;
     }
-    break;
+    ++it;
   }
-  for (;;) {
-    index = str.find("ä");
-    if (index != std::string::npos) {
-      str.replace(index, 2, "{");
-      continue;
-    }
-    break;
-  }
-  for (;;) {
-    index = str.find("ö");
-    if (index != std::string::npos) {
-      str.replace(index, 2, "|");
-      continue;
-    }
-    break;
-  }
-  for (;;) {
-    index = str.find("é");
-    if (index != std::string::npos) {
-      str.replace(index, 2, "`");
-      continue;
-    }
-    break;
-  }
+  return str;
 }
 
 }  // namespace
@@ -412,9 +405,9 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   fetchContext(_now_playing.context_href);
   fetchImage(_now_playing.image);
 
-  fixWideChars(_now_playing.context);
-  fixWideChars(_now_playing.title);
-  fixWideChars(_now_playing.artist);
+  _now_playing.context = toCP1106(_now_playing.context);
+  _now_playing.title = toCP1106(_now_playing.title);
+  _now_playing.artist = toCP1106(_now_playing.artist);
 
   std::cerr << "context: " << _now_playing.context << std::endl;
   std::cerr << "title: " << _now_playing.title << std::endl;
