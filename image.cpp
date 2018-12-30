@@ -140,6 +140,9 @@ std::string Image::renderRow(size_t y, const Color *background) {
     line += '\u001b';
     line += topColor(colors)->code;
     start += 6;
+  } else if (line.empty()) {
+    line += ' ';
+    start += 6;
   }
   while (start != end) {
     line += renderPixels(start, background);
