@@ -57,6 +57,7 @@ class Spoteletext {
   bool fetchNowPlaying(bool retry);
   void fetchContext(const std::string &url);
   void fetchImage(const std::string &url);
+
   void displayCode(const std::string &code, const std::string &verification_url);
   void displayNPV();
 

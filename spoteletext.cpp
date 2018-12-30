@@ -356,25 +356,6 @@ void Spoteletext::loop() {
   }
 }
 
-void Spoteletext::displayCode(const std::string &code, const std::string &url) {
-  std::cerr << "display code: " << code.c_str() << std::endl;
-  using namespace templates;
-  const auto url_offset = (38 - url.substr(0, 38).size()) / 2;
-  const auto code_offset = (38 - code.substr(0, 38).size()) / 2;
-  std::ofstream file{_out_file, std::ofstream::binary};
-  file.write(kPair, kPairUrlOffset);
-  for (auto i = 0u; i < url_offset; ++i) {
-    file << " ";
-  }
-  file << url.c_str();
-  file.write(kPair + kPairUrlOffset, kPairCodeOffset - kPairUrlOffset);
-  for (auto i = 0u; i < code_offset; ++i) {
-    file << " ";
-  }
-  file << " " << code.c_str();
-  file.write(kPair + kPairCodeOffset, strlen(kPair) - kPairCodeOffset);
-}
-
 bool Spoteletext::fetchNowPlaying(bool retry) {
   const auto auth_header = kAuthorizationBearer + _access_token;
   const auto header = curl_slist_append(nullptr, auth_header.c_str());
@@ -515,6 +496,25 @@ void Spoteletext::fetchImage(const std::string &url) {
     std::cerr << std::endl;
   }
 #endif
+}
+
+void Spoteletext::displayCode(const std::string &code, const std::string &url) {
+  std::cerr << "display code: " << code.c_str() << std::endl;
+  using namespace templates;
+  const auto url_offset = (38 - url.substr(0, 38).size()) / 2;
+  const auto code_offset = (38 - code.substr(0, 38).size()) / 2;
+  std::ofstream file{_out_file, std::ofstream::binary};
+  file.write(kPair, kPairUrlOffset);
+  for (auto i = 0u; i < url_offset; ++i) {
+    file << " ";
+  }
+  file << url.c_str();
+  file.write(kPair + kPairUrlOffset, kPairCodeOffset - kPairUrlOffset);
+  for (auto i = 0u; i < code_offset; ++i) {
+    file << " ";
+  }
+  file << " " << code.c_str();
+  file.write(kPair + kPairCodeOffset, strlen(kPair) - kPairCodeOffset);
 }
 
 void Spoteletext::displayNPV() {
