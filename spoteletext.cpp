@@ -1,4 +1,4 @@
-#include "spoteefax.h"
+#include "spoteletext.h"
 
 #include <algorithm>
 #include <cstdio>
@@ -11,7 +11,7 @@
 #include "spclient.h"
 #include "sptemplates.h"
 
-namespace spoteefax {
+namespace teletext {
 namespace {
 
 const auto kAuthDeviceCodeUrl = "https://accounts.spotify.com/api/device/code";
@@ -174,14 +174,14 @@ void fixWideChars(std::string &str) {
 
 }  // namespace
 
-Spoteefax::Spoteefax(const std::string &page_dir)
+Spoteletext::Spoteletext(const std::string &page_dir)
     : _out_file{page_dir + "/P100-3F7F.tti"},
       _image{std::make_unique<teletext::Image>(20, 14)} {
   _curl = curl_easy_init();
   _jq = jq_init();
 }
 
-Spoteefax::~Spoteefax() {
+Spoteletext::~Spoteletext() {
   if (_jq) {
     jq_teardown(&_jq);
   }
@@ -191,7 +191,7 @@ Spoteefax::~Spoteefax() {
   }
 }
 
-int Spoteefax::run() {
+int Spoteletext::run() {
   if (!_curl || !_jq) {
     return 1;
   }
@@ -201,7 +201,7 @@ int Spoteefax::run() {
   return 0;
 }
 
-void Spoteefax::authenticate() {
+void Spoteletext::authenticate() {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
       "&scope=user-read-playback-state"
@@ -230,7 +230,7 @@ void Spoteefax::authenticate() {
   }
 }
 
-bool Spoteefax::authenticateCode(const std::string &device_code,
+bool Spoteletext::authenticateCode(const std::string &device_code,
                                  const std::string &user_code,
                                  const std::string &verification_url,
                                  const std::chrono::seconds &expires_in,
@@ -247,7 +247,7 @@ bool Spoteefax::authenticateCode(const std::string &device_code,
   return true;
 }
 
-bool Spoteefax::getAuthCode(const std::string &device_code,
+bool Spoteletext::getAuthCode(const std::string &device_code,
                             const std::chrono::seconds &expires_in,
                             const std::chrono::seconds &interval,
                             std::string &auth_code) {
@@ -265,7 +265,7 @@ bool Spoteefax::getAuthCode(const std::string &device_code,
   return true;
 }
 
-Spoteefax::PollResult Spoteefax::pollAuthCode(
+Spoteletext::PollResult Spoteletext::pollAuthCode(
     const std::string &device_code, std::string &auth_code) {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
@@ -294,7 +294,7 @@ Spoteefax::PollResult Spoteefax::pollAuthCode(
   return kPollSuccess;
 }
 
-bool Spoteefax::fetchTokens(const std::string &code) {
+bool Spoteletext::fetchTokens(const std::string &code) {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
       "&client_secret=" + credentials::kClientSecret +
@@ -322,7 +322,7 @@ bool Spoteefax::fetchTokens(const std::string &code) {
   return true;
 }
 
-bool Spoteefax::refreshToken() {
+bool Spoteletext::refreshToken() {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
       "&client_secret=" + credentials::kClientSecret +
@@ -350,7 +350,7 @@ bool Spoteefax::refreshToken() {
   return true;
 }
 
-void Spoteefax::loop() {
+void Spoteletext::loop() {
   curl_easy_reset(_curl);
   for (;;) {
     if (!fetchNowPlaying(true)) {
@@ -361,7 +361,7 @@ void Spoteefax::loop() {
   }
 }
 
-void Spoteefax::displayCode(const std::string &code, const std::string &url) {
+void Spoteletext::displayCode(const std::string &code, const std::string &url) {
   std::cerr << "display code: " << code.c_str() << std::endl;
   using namespace templates;
   const auto url_offset = std::max<int>(0, (36 - url.size()) / 2);
@@ -380,7 +380,7 @@ void Spoteefax::displayCode(const std::string &code, const std::string &url) {
   file.write(kPair + kPairCodeOffset, strlen(kPair) - kPairCodeOffset);
 }
 
-bool Spoteefax::fetchNowPlaying(bool retry) {
+bool Spoteletext::fetchNowPlaying(bool retry) {
   const auto auth_header = kAuthorizationBearer + _access_token;
   const auto header = curl_slist_append(nullptr, auth_header.c_str());
 
@@ -424,7 +424,7 @@ bool Spoteefax::fetchNowPlaying(bool retry) {
   return true;
 }
 
-void Spoteefax::fetchContext(const std::string &url) {
+void Spoteletext::fetchContext(const std::string &url) {
   const auto auth_header = kAuthorizationBearer + _access_token;
   const auto header = curl_slist_append(nullptr, auth_header.c_str());
 
@@ -442,7 +442,7 @@ void Spoteefax::fetchContext(const std::string &url) {
   _now_playing.context = parseContext(_jq, buffer);
 }
 
-void Spoteefax::fetchImage(const std::string &url) {
+void Spoteletext::fetchImage(const std::string &url) {
   curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
 
   std::vector<unsigned char> encoded;
@@ -522,7 +522,7 @@ void Spoteefax::fetchImage(const std::string &url) {
 #endif
 }
 
-void Spoteefax::displayNPV() {
+void Spoteletext::displayNPV() {
   const auto title_offset = (38 - _now_playing.title.substr(0, 38).size()) / 2;
   const auto artist_offset = (40 - _now_playing.artist.substr(0, 40).size()) / 2;
 

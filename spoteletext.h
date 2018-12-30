@@ -10,7 +10,7 @@ extern "C" {
 #include <jq.h>
 }
 
-namespace spoteefax {
+namespace teletext {
 
 struct NowPlaying {
   std::string track_id;
@@ -21,7 +21,7 @@ struct NowPlaying {
   std::string image;
 };
 
-class Spoteefax {
+class Spoteletext {
  private:
   enum PollResult {
     kPollSuccess = 0,
@@ -30,8 +30,8 @@ class Spoteefax {
   };
 
  public:
-  Spoteefax(const std::string &page_dir);
-  ~Spoteefax();
+  Spoteletext(const std::string &page_dir);
+  ~Spoteletext();
 
   int run();
 
@@ -72,4 +72,4 @@ class Spoteefax {
   jq_state *_jq{nullptr};
 };
 
-}
+}  // namespace teletext

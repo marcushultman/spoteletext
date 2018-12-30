@@ -7,7 +7,7 @@ def generate():
 
 #pragma once
 
-namespace spoteefax {
+namespace teletext {
 namespace templates {
 
 """)
@@ -48,7 +48,7 @@ namespace templates {
   out.write(
 """
 }  // namespace templates
-}  // namespace spoteefax
+}  // namespace teletext
 """)
   print("done!")
 

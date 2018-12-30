@@ -2,7 +2,7 @@
 
 #pragma once
 
-namespace spoteefax {
+namespace teletext {
 namespace templates {
 
 const int kNpvContextOffset = 80;
@@ -61,4 +61,4 @@ const char kPair[] = {
 
 
 }  // namespace templates
-}  // namespace spoteefax
+}  // namespace teletext

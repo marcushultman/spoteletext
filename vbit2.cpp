@@ -34,10 +34,11 @@
  *************************************************************************** **/
 
 #include "vbit2.h"
-#include "spoteefax.h"
+#include "spoteletext.h"
 
 using namespace vbit;
 using namespace ttx;
+using namespace teletext;
 
 /* Options
  * --dir <path to pages>
@@ -59,11 +60,11 @@ int main(int argc, char** argv)
   Service* svc=new Service(configure, pageList); // Need to copy the subtitle packet source for Newfor
 
   const auto page_dir = configure->GetPageDirectory();
-  const auto sp = std::unique_ptr<spoteefax::Spoteefax>(new spoteefax::Spoteefax(page_dir));
+  const auto spotify = std::make_unique<Spoteletext>(page_dir);
 
 	std::thread monitorThread(&FileMonitor::run, FileMonitor(configure, pageList));
 	std::thread serviceThread(&Service::run, svc);
-  std::thread spoteefaxThread(&spoteefax::Spoteefax::run, sp.get());
+  std::thread spoteletextThread(&Spoteletext::run, spotify.get());
 	
 	if (configure->GetCommandPortEnabled())
 	{
@@ -73,7 +74,7 @@ int main(int argc, char** argv)
 	}
 	
 	// The threads should never stop, but just in case...
-  spoteefaxThread.join();
+  spoteletextThread.join();
 	monitorThread.join();
 	serviceThread.join();
 
