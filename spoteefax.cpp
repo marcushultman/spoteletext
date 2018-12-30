@@ -532,10 +532,8 @@ void Spoteefax::displayNPV() {
   file << " " << _now_playing.context.c_str();
 
   file.write(kNpv + kNpvContextOffset, kNpvImageOffset - kNpvContextOffset);
-  for (auto i = 0; i < kNpvImageHeight; ++i) {
-    file << "OL," << (4 + i) << ",         ";
-    file << _image->line(i).c_str();
-    file << "\n";
+  for (auto line = kNpvImageLineBegin; line < kNpvImageLineEnd; ++line) {
+    file << "OL," << line << ",         " << _image->line(line) << "\n";
   }
 
   file.write(kNpv + kNpvImageOffset, kNpvTitleOffset - kNpvImageOffset);

@@ -26,7 +26,8 @@ namespace templates {
   out.write("const int kNpvTitleOffset = " + str(title) + ";\n")
   out.write("const int kNpvArtistOffset = " + str(artist) + ";\n\n")
 
-  out.write("const int kNpvImageHeight = 14;\n\n")
+  out.write("const int kNpvImageLineBegin = 4;\n")
+  out.write("const int kNpvImageLineEnd = 18;\n\n")
 
   out.write("const char kNpv[] = {\n")
   out.write("\n".join(map(lambda line : "    " + ", ".join(map(lambda c : hex(ord(c)), list(line))) + ",", lines)))
