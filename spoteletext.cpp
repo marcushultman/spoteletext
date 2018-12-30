@@ -226,10 +226,10 @@ void Spoteletext::authenticate() {
 }
 
 bool Spoteletext::authenticateCode(const std::string &device_code,
-                                 const std::string &user_code,
-                                 const std::string &verification_url,
-                                 const std::chrono::seconds &expires_in,
-                                 const std::chrono::seconds &interval) {
+                                   const std::string &user_code,
+                                   const std::string &verification_url,
+                                   const std::chrono::seconds &expires_in,
+                                   const std::chrono::seconds &interval) {
   displayCode(user_code, verification_url);
 
   std::string auth_code;
@@ -243,9 +243,9 @@ bool Spoteletext::authenticateCode(const std::string &device_code,
 }
 
 bool Spoteletext::getAuthCode(const std::string &device_code,
-                            const std::chrono::seconds &expires_in,
-                            const std::chrono::seconds &interval,
-                            std::string &auth_code) {
+                              const std::chrono::seconds &expires_in,
+                              const std::chrono::seconds &interval,
+                              std::string &auth_code) {
   using std::chrono::system_clock;
   auto expiry = system_clock::now() + expires_in;
   while (auto err = pollAuthCode(device_code, auth_code)) {
