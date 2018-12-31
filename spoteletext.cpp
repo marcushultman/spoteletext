@@ -174,12 +174,15 @@ Spoteletext::Spoteletext(CURL *curl, jq_state *jq, const std::string &page_dir)
 
 int Spoteletext::run() {
   std::remove(_out_file.c_str());
-  authenticate();
-  loop();
+  for (;;) {
+    authenticate();
+    loop();
+  }
   return 0;
 }
 
 void Spoteletext::authenticate() {
+  curl_easy_reset(_curl);
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
       "&scope=user-read-playback-state"
@@ -328,22 +331,26 @@ bool Spoteletext::refreshToken() {
 
   _access_token = res.access_token;
 
-  curl_easy_reset(_curl);
   return true;
 }
 
 void Spoteletext::loop() {
-  curl_easy_reset(_curl);
   for (;;) {
-    if (!fetchNowPlaying(true)) {
+    if (fetchNowPlaying(true)) {
+      displayNPV();
+    }
+    if (_has_played && _now_playing.track_id.empty()) {
+      _access_token = {};
+      _refresh_token = {};
+      _has_played = false;
       break;
     }
-    displayNPV();
     std::this_thread::sleep_for(std::chrono::seconds{5});
   }
 }
 
 bool Spoteletext::fetchNowPlaying(bool retry) {
+  curl_easy_reset(_curl);
   const auto auth_header = kAuthorizationBearer + _access_token;
   const auto header = curl_slist_append(nullptr, auth_header.c_str());
 
@@ -369,6 +376,7 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
     }
     return true;
   }
+  _has_played = true;
   auto now_playing = parseNowPlaying(_jq, buffer);
   if (now_playing.track_id == _now_playing.track_id) {
     return true;

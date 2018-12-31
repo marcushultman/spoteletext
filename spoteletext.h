@@ -71,6 +71,7 @@ class Spoteletext {
 
   std::string _access_token;
   std::string _refresh_token;
+  bool _has_played{false};
 
   std::string _out_file;
 
