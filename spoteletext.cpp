@@ -203,46 +203,48 @@ void Spoteletext::authenticate() {
     auto res = parseDeviceFlowData(_jq, buffer);
     std::cerr << "url: " << res.verification_url_prefilled << std::endl;
 
-    if (authenticateCode(res.device_code, res.user_code, res.verification_url, res.expires_in, res.interval)) {
+    auto err = authenticateCode(
+        res.device_code, res.user_code, res.verification_url, res.expires_in, res.interval);
+    if (err == kAuthSuccess) {
       return;
     }
     std::cerr << "failed to authenticate. retrying..." << std::endl;
   }
 }
 
-bool Spoteletext::authenticateCode(const std::string &device_code,
-                                   const std::string &user_code,
-                                   const std::string &verification_url,
-                                   const std::chrono::seconds &expires_in,
-                                   const std::chrono::seconds &interval) {
+Spoteletext::AuthResult Spoteletext::authenticateCode(const std::string &device_code,
+                                                      const std::string &user_code,
+                                                      const std::string &verification_url,
+                                                      const std::chrono::seconds &expires_in,
+                                                      const std::chrono::seconds &interval) {
   displayCode(user_code, verification_url);
 
   std::string auth_code;
-  if (!getAuthCode(device_code, expires_in, interval, auth_code)) {
-    return false;
+  if (auto err = getAuthCode(device_code, expires_in, interval, auth_code)) {
+    return err;
   }
   if (!fetchTokens(auth_code)) {
-    return false;
+    return kAuthError;
   }
-  return true;
+  return kAuthSuccess;
 }
 
-bool Spoteletext::getAuthCode(const std::string &device_code,
-                              const std::chrono::seconds &expires_in,
-                              const std::chrono::seconds &interval,
-                              std::string &auth_code) {
+Spoteletext::AuthResult Spoteletext::getAuthCode(const std::string &device_code,
+                                                 const std::chrono::seconds &expires_in,
+                                                 const std::chrono::seconds &interval,
+                                                 std::string &auth_code) {
   using std::chrono::system_clock;
   auto expiry = system_clock::now() + expires_in;
   while (auto err = pollAuthCode(device_code, auth_code)) {
     if (err == kPollError) {
-      return false;
+      return kAuthError;
     }
     std::this_thread::sleep_for(interval);
     if (system_clock::now() >= expiry) {
-      return false;
+      return kAuthError;
     }
   }
-  return true;
+  return kAuthSuccess;
 }
 
 Spoteletext::PollResult Spoteletext::pollAuthCode(

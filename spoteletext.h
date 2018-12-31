@@ -24,6 +24,10 @@ struct NowPlaying {
 
 class Spoteletext {
  private:
+  enum AuthResult {
+    kAuthSuccess = 0,
+    kAuthError,
+  };
   enum PollResult {
     kPollSuccess = 0,
     kPollWait,
@@ -39,14 +43,14 @@ class Spoteletext {
  private:
   // spotify device code auth flow
   void authenticate();
-  bool authenticateCode(const std::string &device_code,
-                        const std::string &user_code,
-                        const std::string &verification_url,
-                        const std::chrono::seconds &expires_in,
-                        const std::chrono::seconds &interval);
-  bool getAuthCode(const std::string &device_code,
-                   const std::chrono::seconds &expires_in,
-                   const std::chrono::seconds &interval,
+  AuthResult authenticateCode(const std::string &device_code,
+                              const std::string &user_code,
+                              const std::string &verification_url,
+                              const std::chrono::seconds &expires_in,
+                              const std::chrono::seconds &interval);
+  AuthResult getAuthCode(const std::string &device_code,
+                         const std::chrono::seconds &expires_in,
+                         const std::chrono::seconds &interval,
                    std::string &auth_code);
   PollResult pollAuthCode(const std::string &device_code, std::string &auth_code);
   bool fetchTokens(const std::string &auth_code);
