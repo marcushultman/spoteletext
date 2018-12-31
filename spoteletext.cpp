@@ -528,12 +528,10 @@ void Spoteletext::displayNPV() {
   std::ofstream file{_out_file, std::ofstream::binary};
   file.write(kNpv, kNpvContextOffset);
   file << " " << _now_playing.context.c_str();
-
   file.write(kNpv + kNpvContextOffset, kNpvImageOffset - kNpvContextOffset);
   for (auto line = kNpvImageLineBegin, i = 0; line < kNpvImageLineEnd; ++line, ++i) {
     file << "OL," << line << ",         " << _image->line(i) << "\n";
   }
-
   file.write(kNpv + kNpvImageOffset, kNpvTitleOffset - kNpvImageOffset);
   for (auto i = 0u; i < title_offset; ++i) {
     file << " ";
