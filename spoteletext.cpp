@@ -1,8 +1,10 @@
 #include "spoteletext.h"
 
 #include <algorithm>
+#include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <ctime>
 #include <fstream>
 #include <iostream>
 #include <map>
@@ -56,6 +58,11 @@ double nextNumber(jq_state *jq) {
 std::chrono::seconds nextSeconds(jq_state *jq) {
   using sec = std::chrono::seconds;
   return sec{static_cast<sec::rep>(nextNumber(jq))};
+}
+
+std::chrono::milliseconds nextMs(jq_state *jq) {
+  using ms = std::chrono::milliseconds;
+  return ms{static_cast<ms::rep>(nextNumber(jq))};
 }
 
 struct DeviceFlowData {
@@ -112,9 +119,12 @@ NowPlaying parseNowPlaying(jq_state *jq, const std::string &buffer) {
              ".context.href,"
              ".item.name,"
              "(.item.artists | map(.name) | join(\", \")),"
-             "(.item.album.images | min_by(.width)).url");
+             "(.item.album.images | min_by(.width)).url,"
+             ".progress_ms,"
+             ".item.duration_ms");
   jq_start(jq, input, 0);
-  return {nextStr(jq), nextStr(jq), "", nextStr(jq), nextStr(jq), nextStr(jq)};
+  return {
+      nextStr(jq), nextStr(jq), "", nextStr(jq), nextStr(jq), nextStr(jq), nextMs(jq), nextMs(jq)};
 }
 
 std::string parseContext(jq_state *jq, const std::string &buffer) {
@@ -163,6 +173,13 @@ std::string toCP1106(std::string str) {
     ++it;
   }
   return str;
+}
+
+std::tm chronoToTm(std::chrono::milliseconds duration) {
+  using namespace std::chrono;
+  const auto s = static_cast<int>(duration_cast<seconds>(duration % minutes{1}).count());
+  const auto m = static_cast<int>(duration_cast<minutes>(duration).count());
+  return {s, m, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 }
 
 }  // namespace
@@ -376,10 +393,12 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   }
   _has_played = true;
   auto now_playing = parseNowPlaying(_jq, buffer);
-  if (now_playing.track_id == _now_playing.track_id) {
+  auto track_changed = now_playing.track_id != _now_playing.track_id;
+  _now_playing = now_playing;
+
+  if (!track_changed) {
     return true;
   }
-  _now_playing = now_playing;
 
   if (!_now_playing.context_href.empty()) {
     fetchContext(_now_playing.context_href);
@@ -394,10 +413,11 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   _now_playing.title = toCP1106(_now_playing.title);
   _now_playing.artist = toCP1106(_now_playing.artist);
 
-  std::cerr << "context: " << _now_playing.context << std::endl;
-  std::cerr << "title: " << _now_playing.title << std::endl;
-  std::cerr << "artist: " << _now_playing.artist << std::endl;
-  std::cerr << "image: " << _now_playing.image << std::endl;
+  std::cerr << "context: " << _now_playing.context << "\n";
+  std::cerr << "title: " << _now_playing.title << "\n";
+  std::cerr << "artist: " << _now_playing.artist << "\n";
+  std::cerr << "image: " << _now_playing.image << "\n";
+  std::cerr << "duration: " << _now_playing.duration.count() << std::endl;
 
   return true;
 }
@@ -541,7 +561,28 @@ void Spoteletext::displayNPV() {
     file << " ";
   }
   file << _now_playing.artist.substr(0, 40).c_str();
-  file.write(kNpv + kNpvArtistOffset, strlen(kNpv) - kNpvArtistOffset);
+  file.write(kNpv + kNpvArtistOffset, kNpvProgressOffset - kNpvArtistOffset);
+
+  auto progress_label = std::string{"00:00"};
+  auto duration_label = std::string{"00:00"};
+  const auto progress_tm = chronoToTm(_now_playing.progress);
+  const auto duration_tm = chronoToTm(_now_playing.duration);
+  std::strftime(&progress_label[0], 6, "%M:%S", &progress_tm);
+  std::strftime(&duration_label[0], 6, "%M:%S", &duration_tm);
+
+  auto progress_width = kNpvProgressWidth * static_cast<double>(_now_playing.progress.count()) /
+                        _now_playing.duration.count();
+  file << "  " << progress_label << "\u001bW";
+  for (auto i = 0; i < kNpvProgressWidth; ++i) {
+    unsigned char out = 1 << 5;
+    if (progress_width > i) {
+      out |= 1 << 2 | 1 << 3;
+    } else if (progress_width > i - 0.5) {
+      out |= 1 << 2;
+    }
+    file << out;
+  }
+  file << "\u001bG" << duration_label;
 }
 
 }  // namespace teletext

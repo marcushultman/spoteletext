@@ -20,6 +20,8 @@ struct NowPlaying {
   std::string title;
   std::string artist;
   std::string image;
+  std::chrono::milliseconds progress;
+  std::chrono::milliseconds duration;
 };
 
 class Spoteletext {

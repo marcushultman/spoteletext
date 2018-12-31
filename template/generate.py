@@ -12,7 +12,7 @@ namespace templates {
 
 """)
   lines = open("npv.tti").readlines()
-  context, image, title, artist = (-2, 0, -2, -2)
+  context, image, title, artist, progress = (-2, 0, -2, -2, -2)
   for line in lines[0:6]:
     context += len(line)
   for line in lines[0:7]:
@@ -21,13 +21,19 @@ namespace templates {
     title += len(line)
   for line in lines[0:11]:
     artist += len(line)
+  for line in lines[0:12]:
+    progress += len(line)
+
   out.write("const int kNpvContextOffset = " + str(context) + ";\n")
   out.write("const int kNpvImageOffset = " + str(image) + ";\n")
   out.write("const int kNpvTitleOffset = " + str(title) + ";\n")
-  out.write("const int kNpvArtistOffset = " + str(artist) + ";\n\n")
+  out.write("const int kNpvArtistOffset = " + str(artist) + ";\n")
+  out.write("const int kNpvProgressOffset = " + str(progress) + ";\n\n")
 
   out.write("const int kNpvImageLineBegin = 4;\n")
   out.write("const int kNpvImageLineEnd = 18;\n\n")
+
+  out.write("const int kNpvProgressWidth = 24;\n\n")
 
   out.write("const char kNpv[] = {\n")
   out.write("\n".join(map(lambda line : "    " + ", ".join(map(lambda c : hex(ord(c)), list(line))) + ",", lines)))
