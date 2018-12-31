@@ -370,10 +370,17 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
     return true;
   }
   _now_playing = now_playing;
-  fetchContext(_now_playing.context_href);
-  fetchImage(_now_playing.image);
 
-  _now_playing.context = toCP1106(_now_playing.context);
+  if (!_now_playing.context_href.empty()) {
+    fetchContext(_now_playing.context_href);
+    _now_playing.context = toCP1106(_now_playing.context);
+  }
+  if (!_now_playing.image.empty()) {
+    fetchImage(_now_playing.image);
+  } else {
+    _image->clear();
+  }
+
   _now_playing.title = toCP1106(_now_playing.title);
   _now_playing.artist = toCP1106(_now_playing.artist);
 
