@@ -481,7 +481,6 @@ void Spoteletext::fetchImage(const std::string &url) {
           fg = std::find_if(
               teletext::kColors.begin(), teletext::kColors.end(), [it](auto &c) { return c.code == *it; });
           std::cerr << "\033[1;" << +bg->terminal_code << "mf" << +fg->terminal_code << ".";
-          std::cerr << "\033[1;" << +fg->terminal_code << "m";
         }
         continue;
       }
