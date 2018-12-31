@@ -362,9 +362,11 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
     return retry && refreshToken() && fetchNowPlaying(false);
   }
   if (status == 204) {
-    std::cerr << "nothing is playing" << std::endl;
-    _now_playing = {};
-    _image->clear();
+    if (!_now_playing.track_id.empty()) {
+      std::cerr << "nothing is playing" << std::endl;
+      _now_playing = {};
+      _image->clear();
+    }
     return true;
   }
   auto now_playing = parseNowPlaying(_jq, buffer);
