@@ -22,8 +22,7 @@ const auto kContentTypeXWWWFormUrlencoded = "Content-Type: application/x-www-for
 const auto kAuthorizationBearer = "Authorization: Bearer ";
 
 bool curl_perform_and_check(CURL *curl, long &status) {
-  return curl_easy_perform(curl) ||
-         curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status) ||
+  return curl_easy_perform(curl) || curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &status) ||
          status >= 400;
 }
 
@@ -70,7 +69,9 @@ struct DeviceFlowData {
 
 DeviceFlowData parseDeviceFlowData(jq_state *jq, const std::string &buffer) {
   const auto input = jv_parse(buffer.c_str());
-  jq_compile(jq, ".device_code, .user_code, .expires_in, .verification_url, .verification_url_prefilled, .interval");
+  jq_compile(jq,
+             ".device_code, .user_code, .expires_in, .verification_url, "
+             ".verification_url_prefilled, .interval");
   jq_start(jq, input, 0);
   return {nextStr(jq), nextStr(jq), nextSeconds(jq), nextStr(jq), nextStr(jq), nextSeconds(jq)};
 }
@@ -107,11 +108,11 @@ TokenData parseTokenData(jq_state *jq, const std::string &buffer) {
 NowPlaying parseNowPlaying(jq_state *jq, const std::string &buffer) {
   const auto input = jv_parse(buffer.c_str());
   jq_compile(jq,
-    ".item.id,"
-    ".context.href,"
-    ".item.name,"
-    "(.item.artists | map(.name) | join(\", \")),"
-    "(.item.album.images | min_by(.width)).url");
+             ".item.id,"
+             ".context.href,"
+             ".item.name,"
+             "(.item.artists | map(.name) | join(\", \")),"
+             "(.item.album.images | min_by(.width)).url");
   jq_start(jq, input, 0);
   return {nextStr(jq), nextStr(jq), "", nextStr(jq), nextStr(jq), nextStr(jq)};
 }
@@ -125,13 +126,13 @@ std::string parseContext(jq_state *jq, const std::string &buffer) {
 
 size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
   size *= nmemb;
-  static_cast<std::string*>(obj)->append(ptr, size);
+  static_cast<std::string *>(obj)->append(ptr, size);
   return size;
 }
 
 size_t bufferArray(char *ptr, size_t size, size_t nmemb, void *obj) {
   size *= nmemb;
-  auto &v = *static_cast<std::vector<unsigned char>*>(obj);
+  auto &v = *static_cast<std::vector<unsigned char> *>(obj);
   v.insert(v.end(), ptr, ptr + size);
   return size;
 }
@@ -139,18 +140,18 @@ size_t bufferArray(char *ptr, size_t size, size_t nmemb, void *obj) {
 // NRC Swedish
 std::string toCP1106(std::string str) {
   static const std::map<std::string, char> CP1106 = {
-    // {"#", '#'},
-    {"É", '@'},
-    {"Ä", '['},
-    {"Ö", '\\'},
-    {"Å", ']'},
-    {"Ü", '^'},
-    // {"_", '_'},
-    {"é", '`'},
-    {"ä", '{'},
-    {"ö", '|'},
-    {"å", '}'},
-    {"ü", '~'},
+      // {"#", '#'},
+      {"É", '@'},
+      {"Ä", '['},
+      {"Ö", '\\'},
+      {"Å", ']'},
+      {"Ü", '^'},
+      // {"_", '_'},
+      {"é", '`'},
+      {"ä", '{'},
+      {"ö", '|'},
+      {"å", '}'},
+      {"ü", '~'},
   };
   auto index = std::string::npos;
   for (auto it = CP1106.begin(); it != CP1106.end();) {
@@ -185,8 +186,8 @@ void Spoteletext::authenticate() {
   curl_easy_reset(_curl);
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
-      "&scope=user-read-playback-state"
-      "&description=spoteefax";
+                    "&scope=user-read-playback-state"
+                    "&description=spoteefax";
 
   for (;;) {
     curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
@@ -250,13 +251,12 @@ Spoteletext::AuthResult Spoteletext::getAuthCode(const std::string &device_code,
   return kAuthSuccess;
 }
 
-Spoteletext::PollResult Spoteletext::pollAuthCode(
-    const std::string &device_code, std::string &auth_code) {
+Spoteletext::PollResult Spoteletext::pollAuthCode(const std::string &device_code,
+                                                  std::string &auth_code) {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
-  const auto data = std::string{"client_id="} + credentials::kClientId +
-      "&code=" + device_code +
-      "&scope=user-read-playback-state"
-      "&grant_type=http://spotify.com/oauth2/device/1";
+  const auto data = std::string{"client_id="} + credentials::kClientId + "&code=" + device_code +
+                    "&scope=user-read-playback-state"
+                    "&grant_type=http://spotify.com/oauth2/device/1";
 
   curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
   curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, data.c_str());
@@ -282,9 +282,8 @@ Spoteletext::PollResult Spoteletext::pollAuthCode(
 bool Spoteletext::fetchTokens(const std::string &code) {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
-      "&client_secret=" + credentials::kClientSecret +
-      "&code=" + code +
-      "&grant_type=authorization_code";
+                    "&client_secret=" + credentials::kClientSecret + "&code=" + code +
+                    "&grant_type=authorization_code";
 
   curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
   curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, data.c_str());
@@ -310,9 +309,8 @@ bool Spoteletext::fetchTokens(const std::string &code) {
 bool Spoteletext::refreshToken() {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
-      "&client_secret=" + credentials::kClientSecret +
-      "&refresh_token=" + _refresh_token +
-      "&grant_type=refresh_token";
+                    "&client_secret=" + credentials::kClientSecret +
+                    "&refresh_token=" + _refresh_token + "&grant_type=refresh_token";
 
   curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
   curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, data.c_str());
@@ -478,8 +476,9 @@ void Spoteletext::fetchImage(const std::string &url) {
           bg = *it == '\\' ? &teletext::kColors[0] : fg;
           std::cerr << "\033[1;" << +bg->terminal_code << "mb" << +bg->terminal_code << ".";
         } else {
-          fg = std::find_if(
-              teletext::kColors.begin(), teletext::kColors.end(), [it](auto &c) { return c.code == *it; });
+          fg = std::find_if(teletext::kColors.begin(), teletext::kColors.end(), [it](auto &c) {
+            return c.code == *it;
+          });
           std::cerr << "\033[1;" << +bg->terminal_code << "mf" << +fg->terminal_code << ".";
         }
         continue;
@@ -545,5 +544,4 @@ void Spoteletext::displayNPV() {
   file.write(kNpv + kNpvArtistOffset, strlen(kNpv) - kNpvArtistOffset);
 }
 
-
-}  // namespace spoteefax
+}  // namespace teletext

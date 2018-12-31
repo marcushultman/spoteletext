@@ -1,10 +1,10 @@
 #pragma once
 
+#include <curl/curl.h>
+#include <jpeglib.h>
 #include <chrono>
 #include <memory>
 #include <string>
-#include <curl/curl.h>
-#include <jpeglib.h>
 #include "image.h"
 
 extern "C" {
@@ -51,7 +51,7 @@ class Spoteletext {
   AuthResult getAuthCode(const std::string &device_code,
                          const std::chrono::seconds &expires_in,
                          const std::chrono::seconds &interval,
-                   std::string &auth_code);
+                         std::string &auth_code);
   PollResult pollAuthCode(const std::string &device_code, std::string &auth_code);
   bool fetchTokens(const std::string &auth_code);
   bool refreshToken();
