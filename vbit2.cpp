@@ -35,8 +35,13 @@
 
 #include "vbit2.h"
 
+#include <curl/curl.h>
+#include <jpeglib.h>
+#include "spoteletext.h"
+
 using namespace vbit;
 using namespace ttx;
+using namespace teletext;
 
 /* Options
  * --dir <path to pages>
@@ -57,8 +62,23 @@ int main(int argc, char** argv)
 
   Service* svc=new Service(configure, pageList); // Need to copy the subtitle packet source for Newfor
 
+  auto curl = curl_easy_init();
+  if (!curl) {
+    return 1;
+  }
+
+  auto jq = jq_init();
+  if (!jq) {
+    curl_easy_cleanup(curl);
+    return 1;
+  }
+
+  const auto page_dir = configure->GetPageDirectory();
+  const auto spotify = std::make_unique<Spoteletext>(curl, jq, page_dir);
+
 	std::thread monitorThread(&FileMonitor::run, FileMonitor(configure, pageList));
 	std::thread serviceThread(&Service::run, svc);
+  std::thread spoteletextThread(&Spoteletext::run, spotify.get());
 	
 	if (configure->GetCommandPortEnabled())
 	{
@@ -68,8 +88,12 @@ int main(int argc, char** argv)
 	}
 	
 	// The threads should never stop, but just in case...
+  spoteletextThread.join();
 	monitorThread.join();
 	serviceThread.join();
+
+  jq_teardown(&jq);
+  curl_easy_cleanup(curl);
 
 	std::cout << "VBIT2 ended. Press any key to continue" << std::endl;
     system("pause"); // @todo Only apply this line in debug

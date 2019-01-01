@@ -2,9 +2,9 @@
 CC=g++
 
 #Set any compiler flags you want to use (e.g. "-I."), or leave blank
-CXXFLAGS = -g -O2 -Wall -std=gnu++11 -fstack-protector-all -Wextra -I.
+CXXFLAGS = -g -O2 -Wall -std=c++14 -fstack-protector-all -Wextra -I. -isystem/usr/local/include
 
-LIBS = -lpthread -fstack-protector
+LIBS = -lpthread -fstack-protector -lcurl -ljq -ljpeg -L/usr/local/lib
 
 ifeq ($(OS),Windows_NT)
 	CXXFLAGS += -DWIN32
@@ -18,9 +18,9 @@ else
 endif
 
 #Set any dependent files (e.g. header files) so that if they are edited they cause a re-compile (e.g. "main.h my_sub_functions.h some_definitions_file.h"), or leave blank
-DEPS = vbit2.h service.h configure.h pagelist.h ttxpage.h packet.h tables.h ttxpagestream.h ttxline.h carousel.h filemonitor.h command.h TCPClient.h newfor.h hamm-tables.h packetsource.h packetmag.h packet830.h packetsubtitle.h ttxcodes.h specialpages.h normalpages.h
+DEPS = vbit2.h service.h configure.h pagelist.h ttxpage.h packet.h tables.h ttxpagestream.h ttxline.h carousel.h filemonitor.h command.h TCPClient.h newfor.h hamm-tables.h packetsource.h packetmag.h packet830.h packetsubtitle.h ttxcodes.h specialpages.h normalpages.h spoteletext.h spclient.h image.h
 
-OBJ = vbit2.o service.o configure.o pagelist.o ttxpage.o packet.o tables.o ttxpagestream.o ttxline.o carousel.o filemonitor.o command.o TCPClient.o newfor.o packetsource.o packetmag.o packet830.o packetsubtitle.o specialpages.o normalpages.o
+OBJ = vbit2.o service.o configure.o pagelist.o ttxpage.o packet.o tables.o ttxpagestream.o ttxline.o carousel.o filemonitor.o command.o TCPClient.o newfor.o packetsource.o packetmag.o packet830.o packetsubtitle.o specialpages.o normalpages.o spoteletext.o image.o
 
 #Below here doesn't need to change
 #Compile each object file

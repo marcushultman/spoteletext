@@ -2,3 +2,12 @@
 *.o
 *.bak
 *.bak
+
+*.pyc
+
+# spotify credentials
+spclient.h
+
+pages/P*
+vbit2
+build/
