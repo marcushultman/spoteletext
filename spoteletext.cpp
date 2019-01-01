@@ -360,7 +360,11 @@ void Spoteletext::loop() {
       _has_played = false;
       break;
     }
-    std::this_thread::sleep_for(std::chrono::seconds{5});
+    for (auto i = 0; i < 5; ++i) {
+      std::this_thread::sleep_for(std::chrono::seconds{1});
+      _now_playing.progress += std::chrono::seconds{1};
+      displayNPV();
+    }
   }
 }
 
