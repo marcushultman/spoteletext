@@ -397,12 +397,12 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   }
   _has_played = true;
   auto now_playing = parseNowPlaying(_jq, buffer);
-  auto track_changed = now_playing.track_id != _now_playing.track_id;
-  _now_playing = now_playing;
 
-  if (!track_changed) {
+  if (now_playing.track_id == _now_playing.track_id) {
+    _now_playing.progress = now_playing.progress;
     return true;
   }
+  _now_playing = now_playing;
 
   if (!_now_playing.context_href.empty()) {
     fetchContext(_now_playing.context_href);
