@@ -11,6 +11,7 @@
 #include <thread>
 #include <vector>
 #include "spclient.h"
+#include "spotify_tag_generator.h"
 #include "sptemplates.h"
 
 namespace teletext {
@@ -142,6 +143,15 @@ std::string parseContext(jq_state *jq, const std::string &buffer) {
   return nextStr(jq);
 }
 
+uint64_t parseScannableId(jq_state *jq, const std::string &buffer) {
+  const auto input = jv_parse(buffer.c_str());
+  jq_compile(jq, ".id");
+  jq_start(jq, input, 0);
+  auto str = nextStr(jq);
+  std::cerr << "scannable-id: " << str.c_str() << std::endl;
+  return std::stoll(str);
+}
+
 size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
   size *= nmemb;
   static_cast<std::string *>(obj)->append(ptr, size);
@@ -190,16 +200,29 @@ std::tm chronoToTm(std::chrono::milliseconds duration) {
   return {s, m, 0, 0, 0, 0, 0, 0, 0, 0, 0};
 }
 
+unsigned char renderScannableBarCell(int bar, int y) {
+  unsigned char out = (1 << 5) | (1 << 1) | (1 << 3) | (1 << 6);
+  y -= 3;
+  y *= 3;
+  bar += y < 0 ? 1 : -1;
+  if (std::abs(y + 0) > bar) out |= (1 << 0);
+  if (std::abs(y + 1) > bar) out |= (1 << 2);
+  if (std::abs(y + 2) > bar) out |= (1 << 4);
+  return out;
+}
+
 }  // namespace
 
 Spoteletext::Spoteletext(CURL *curl, jq_state *jq, const std::string &page_dir)
     : _curl{curl},
       _jq{jq},
       _out_file{page_dir + "/P100-3F7F.tti"},
+      _scannable_file{page_dir + "/P101-3F7F.tti"},
       _image{std::make_unique<teletext::Image>(20, 14)} {}
 
 int Spoteletext::run() {
   std::remove(_out_file.c_str());
+  std::remove(_scannable_file.c_str());
   for (;;) {
     authenticate();
     loop();
@@ -361,11 +384,13 @@ void Spoteletext::loop() {
   for (;;) {
     if (fetchNowPlaying(true)) {
       displayNPV();
+      displayScannable();
     }
     if (_has_played && _now_playing.track_id.empty()) {
       _access_token = {};
       _refresh_token = {};
       _has_played = false;
+      std::remove(_scannable_file.c_str());
       break;
     }
     for (auto i = 0; i < 5; ++i) {
@@ -421,6 +446,7 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   } else {
     _image->clear();
   }
+  fetchScannable(_now_playing.uri);
 
   _now_playing.title = toCP1106(_now_playing.title);
   _now_playing.artist = toCP1106(_now_playing.artist);
@@ -430,6 +456,7 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   std::cerr << "artist: " << _now_playing.artist << "\n";
   std::cerr << "image: " << _now_playing.image << "\n";
   std::cerr << "uri: " << _now_playing.uri << "\n";
+  std::cerr << "scannable: " << _scannable_id << "\n";
   std::cerr << "duration: " << _now_playing.duration.count() << std::endl;
 
   return true;
@@ -533,6 +560,28 @@ void Spoteletext::fetchImage(const std::string &url) {
 #endif
 }
 
+void Spoteletext::fetchScannable(const std::string &uri) {
+  curl_easy_reset(_curl);
+  const auto auth_header = kAuthorizationBearer + _access_token;
+  const auto header = curl_slist_append(nullptr, auth_header.c_str());
+  const auto url = credentials::kScannablesUrl + uri + "?format=json";
+
+  curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
+  curl_easy_setopt(_curl, CURLOPT_POSTFIELDS, "");
+  curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
+
+  std::string buffer;
+  curl_easy_setopt(_curl, CURLOPT_WRITEDATA, &buffer);
+  curl_easy_setopt(_curl, CURLOPT_WRITEFUNCTION, bufferString);
+
+  if (curl_perform_and_check(_curl)) {
+    std::cerr << "failed to fetch scannable id" << std::endl;
+    _scannable_id = 0;
+    return;
+  }
+  _scannable_id = parseScannableId(_jq, buffer);
+}
+
 void Spoteletext::displayCode(const std::string &code, const std::string &url) {
   std::cerr << "display code: " << code.c_str() << std::endl;
   using namespace templates;
@@ -596,6 +645,29 @@ void Spoteletext::displayNPV() {
     file << out;
   }
   file << "\u001bG" << duration_label;
+}
+
+void Spoteletext::displayScannable() {
+  if (!_scannable_id) {
+    return;
+  }
+  static unsigned char kFull = 0x7f;
+
+  const auto lengths = makeLineLengthsFromId(_scannable_id);
+
+  using namespace templates;
+  std::ofstream file{_scannable_file, std::ofstream::binary};
+  file.write(kScannable, kScannableRows[0]);
+  for (auto row = 0; row < 6; ++row) {
+    for (auto length : lengths) {
+      file << renderScannableBarCell(length, row);
+    }
+    file << kFull << kFull << kFull;
+    if (row < 5) {
+      file.write(kScannable + kScannableRows[row], kScannableRows[row + 1] - kScannableRows[row]);
+    }
+  }
+  file.write(kScannable + kScannableRows[5], strlen(kScannable) - kScannableRows[5]);
 }
 
 }  // namespace teletext

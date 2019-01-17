@@ -51,6 +51,20 @@ namespace templates {
   out.write("\n".join(map(lambda line : "    " + ", ".join(map(lambda c : hex(ord(c)), list(line))) + ",", lines)))
   out.write("\n};\n\n")
 
+  lines = open("scannable.tti").readlines()
+  offset = -2
+  for line in lines[0:6]:
+    offset += len(line)
+  print(len(lines))
+  out.write("const int kScannableRows[] = {\n")
+  for i in range(6, 12):
+    out.write("  " + str(offset) + ",\n")
+    offset += len(lines[i])
+  out.write("};\n\n")
+  out.write("const char kScannable[] = {\n")
+  out.write("\n".join(map(lambda line : "    " + ", ".join(map(lambda c : hex(ord(c)), list(line))) + ",", lines)))
+  out.write("\n};\n\n")
+
   out.write(
 """
 }  // namespace templates

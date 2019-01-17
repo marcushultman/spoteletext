@@ -65,9 +65,11 @@ class Spoteletext {
   bool fetchNowPlaying(bool retry);
   void fetchContext(const std::string &url);
   void fetchImage(const std::string &url);
+  void fetchScannable(const std::string &uri);
 
   void displayCode(const std::string &code, const std::string &verification_url);
   void displayNPV();
+  void displayScannable();
 
   CURL *_curl{nullptr};
   jq_state *_jq{nullptr};
@@ -77,9 +79,11 @@ class Spoteletext {
   bool _has_played{false};
 
   std::string _out_file;
+  std::string _scannable_file;
 
   NowPlaying _now_playing;
   std::unique_ptr<teletext::Image> _image;
+  uint64_t _scannable_id{0};
 };
 
 }  // namespace teletext
