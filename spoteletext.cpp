@@ -120,11 +120,19 @@ NowPlaying parseNowPlaying(jq_state *jq, const std::string &buffer) {
              ".item.name,"
              "(.item.artists | map(.name) | join(\", \")),"
              "(.item.album.images | min_by(.width)).url,"
+             ".item.uri,"
              ".progress_ms,"
              ".item.duration_ms");
   jq_start(jq, input, 0);
-  return {
-      nextStr(jq), nextStr(jq), "", nextStr(jq), nextStr(jq), nextStr(jq), nextMs(jq), nextMs(jq)};
+  return {nextStr(jq),
+          nextStr(jq),
+          "",
+          nextStr(jq),
+          nextStr(jq),
+          nextStr(jq),
+          nextStr(jq),
+          nextMs(jq),
+          nextMs(jq)};
 }
 
 std::string parseContext(jq_state *jq, const std::string &buffer) {
@@ -421,6 +429,7 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   std::cerr << "title: " << _now_playing.title << "\n";
   std::cerr << "artist: " << _now_playing.artist << "\n";
   std::cerr << "image: " << _now_playing.image << "\n";
+  std::cerr << "uri: " << _now_playing.uri << "\n";
   std::cerr << "duration: " << _now_playing.duration.count() << std::endl;
 
   return true;
