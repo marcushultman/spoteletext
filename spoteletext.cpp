@@ -441,11 +441,7 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
     fetchContext(_now_playing.context_href);
     _now_playing.context = toCP1106(_now_playing.context);
   }
-  if (!_now_playing.image.empty()) {
-    fetchImage(_now_playing.image);
-  } else {
-    _image->clear();
-  }
+  fetchImage(_now_playing.image);
   fetchScannable(_now_playing.uri);
 
   _now_playing.title = toCP1106(_now_playing.title);
@@ -481,6 +477,10 @@ void Spoteletext::fetchContext(const std::string &url) {
 }
 
 void Spoteletext::fetchImage(const std::string &url) {
+  if (url.empty()) {
+    _image->clear();
+    return;
+  }
   curl_easy_setopt(_curl, CURLOPT_URL, url.c_str());
 
   std::vector<unsigned char> encoded;
@@ -489,6 +489,7 @@ void Spoteletext::fetchImage(const std::string &url) {
 
   if (curl_perform_and_check(_curl)) {
     std::cerr << "failed to fetch image" << std::endl;
+    _image->clear();
     return;
   }
 
@@ -499,6 +500,7 @@ void Spoteletext::fetchImage(const std::string &url) {
   jpeg_mem_src(&cinfo, &encoded[0], encoded.size());
 
   if (jpeg_read_header(&cinfo, TRUE) != JPEG_HEADER_OK) {
+    _image->clear();
     return;
   }
   jpeg_start_decompress(&cinfo);
