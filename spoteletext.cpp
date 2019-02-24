@@ -439,13 +439,13 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
 
   if (!_now_playing.context_href.empty()) {
     fetchContext(_now_playing.context_href);
-    _now_playing.context = toCP1106(_now_playing.context);
   }
   fetchImage(_now_playing.image);
   fetchScannable(_now_playing.uri);
 
   _now_playing.title = toCP1106(_now_playing.title);
   _now_playing.artist = toCP1106(_now_playing.artist);
+  _now_playing.context = toCP1106(_now_playing.context);
 
   std::cerr << "context: " << _now_playing.context << "\n";
   std::cerr << "title: " << _now_playing.title << "\n";
