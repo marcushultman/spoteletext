@@ -145,11 +145,13 @@ std::string parseContext(jq_state *jq, const std::string &buffer) {
 
 Scannable parseScannable(jq_state *jq, const std::string &buffer) {
   const auto input = jv_parse(buffer.c_str());
-  jq_compile(jq, ".id");
+  jq_compile(jq, ".id0, .id1");
   jq_start(jq, input, 0);
-  auto str = nextStr(jq);
-  std::cerr << "scannable-id: " << str.c_str() << std::endl;
-  return std::stoll(str);
+  const auto id0 = nextStr(jq), id1 = nextStr(jq);
+  if (id0.empty() || id1.empty()) {
+    return {};
+  }
+  return std::stoll(id0);
 }
 
 size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
