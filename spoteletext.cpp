@@ -437,9 +437,7 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   }
   _now_playing = now_playing;
 
-  if (!_now_playing.context_href.empty()) {
-    fetchContext(_now_playing.context_href);
-  }
+  fetchContext(_now_playing.context_href);
   fetchImage(_now_playing.image);
   fetchScannable(_now_playing.uri);
 
@@ -459,6 +457,9 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
 }
 
 void Spoteletext::fetchContext(const std::string &url) {
+  if (url.empty()) {
+    return;
+  }
   const auto auth_header = kAuthorizationBearer + _access_token;
   const auto header = curl_slist_append(nullptr, auth_header.c_str());
 
