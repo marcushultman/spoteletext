@@ -25,6 +25,8 @@ struct NowPlaying {
   std::chrono::milliseconds duration;
 };
 
+using Scannable = uint64_t;
+
 class Spoteletext {
  private:
   enum AuthResult {
@@ -83,7 +85,7 @@ class Spoteletext {
 
   NowPlaying _now_playing;
   std::unique_ptr<teletext::Image> _image;
-  uint64_t _scannable_id{0};
+  Scannable _scannable{};
 };
 
 }  // namespace teletext

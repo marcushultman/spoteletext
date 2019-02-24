@@ -143,7 +143,7 @@ std::string parseContext(jq_state *jq, const std::string &buffer) {
   return nextStr(jq);
 }
 
-uint64_t parseScannableId(jq_state *jq, const std::string &buffer) {
+Scannable parseScannable(jq_state *jq, const std::string &buffer) {
   const auto input = jv_parse(buffer.c_str());
   jq_compile(jq, ".id");
   jq_start(jq, input, 0);
@@ -450,7 +450,7 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   std::cerr << "artist: " << _now_playing.artist << "\n";
   std::cerr << "image: " << _now_playing.image << "\n";
   std::cerr << "uri: " << _now_playing.uri << "\n";
-  std::cerr << "scannable: " << _scannable_id << "\n";
+  std::cerr << "scannable: " << _scannable << "\n";
   std::cerr << "duration: " << _now_playing.duration.count() << std::endl;
 
   return true;
@@ -579,10 +579,10 @@ void Spoteletext::fetchScannable(const std::string &uri) {
 
   if (curl_perform_and_check(_curl)) {
     std::cerr << "failed to fetch scannable id" << std::endl;
-    _scannable_id = 0;
+    _scannable = {};
     return;
   }
-  _scannable_id = parseScannableId(_jq, buffer);
+  _scannable = parseScannable(_jq, buffer);
 }
 
 void Spoteletext::displayCode(const std::string &code, const std::string &url) {
@@ -651,12 +651,12 @@ void Spoteletext::displayNPV() {
 }
 
 void Spoteletext::displayScannable() {
-  if (!_scannable_id) {
+  if (!_scannable) {
     return;
   }
   static unsigned char kFull = 0x7f;
 
-  const auto lengths = makeLineLengthsFromId(_scannable_id);
+  const auto lengths = makeLineLengthsFromId(_scannable);
 
   using namespace templates;
   std::ofstream file{_scannable_file, std::ofstream::binary};
