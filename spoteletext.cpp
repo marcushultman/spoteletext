@@ -151,7 +151,7 @@ Scannable parseScannable(jq_state *jq, const std::string &buffer) {
   if (id0.empty() || id1.empty()) {
     return {};
   }
-  return std::stoll(id0);
+  return {std::stoull(id0), std::stoull(id1)};
 }
 
 size_t bufferString(char *ptr, size_t size, size_t nmemb, void *obj) {
@@ -452,7 +452,7 @@ bool Spoteletext::fetchNowPlaying(bool retry) {
   std::cerr << "artist: " << _now_playing.artist << "\n";
   std::cerr << "image: " << _now_playing.image << "\n";
   std::cerr << "uri: " << _now_playing.uri << "\n";
-  std::cerr << "scannable: " << _scannable << "\n";
+  std::cerr << "scannable id0: " << _scannable.id0 << ", id1: " << _scannable.id1 << "\n";
   std::cerr << "duration: " << _now_playing.duration.count() << std::endl;
 
   return true;
@@ -653,17 +653,22 @@ void Spoteletext::displayNPV() {
 }
 
 void Spoteletext::displayScannable() {
-  if (!_scannable) {
+  if (!_scannable.id0) {
     return;
   }
   static unsigned char kFull = 0x7f;
 
-  const auto lengths = makeLineLengthsFromId(_scannable);
+  std::vector<uint8_t> lengths0, lengths1;
+  lengths0 = makeLineLengthsFromId(_scannable.id0);
+  if (_scannable.id1) {
+    lengths1 = makeLineLengthsFromId(_scannable.id1);
+  }
 
   using namespace templates;
   std::ofstream file{_scannable_file, std::ofstream::binary};
   file.write(kScannable, kScannableRows[0]);
   for (auto row = 0; row < 6; ++row) {
+    const auto &lengths = row < 3 || !_scannable.id1 ? lengths0 : lengths1;
     for (auto length : lengths) {
       file << renderScannableBarCell(length, row);
     }

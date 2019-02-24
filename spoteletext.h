@@ -25,7 +25,10 @@ struct NowPlaying {
   std::chrono::milliseconds duration;
 };
 
-using Scannable = uint64_t;
+struct Scannable {
+  uint64_t id0;
+  uint64_t id1;
+};
 
 class Spoteletext {
  private:
