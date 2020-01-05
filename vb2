@@ -34,7 +34,7 @@ sudo ~/raspi-teletext-master/tvctl on
 
 # This loop restarts the teletext server if it stops.
 # To stop teletext you should kill this process and not vbit2 or raspi.
-until $HOME/vbit2/vbit2 2>/var/tmp/spoteefax --dir $PAGESDIRECTORY | $HOME/raspi-teletext-master/teletext -; do
+until $HOME/vbit2/vbit2 2>/var/tmp/spoteletext --dir $PAGESDIRECTORY | $HOME/raspi-teletext/teletext -; do
     trap 'exit' INT HUP TERM
     echo "VBIT2 Server crashed with exit code 0.  Respawning.." >&2
     sleep 1

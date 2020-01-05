@@ -237,7 +237,7 @@ void Spoteletext::authenticate() {
   const auto header = curl_slist_append(nullptr, kContentTypeXWWWFormUrlencoded);
   const auto data = std::string{"client_id="} + credentials::kClientId +
                     "&scope=user-read-playback-state"
-                    "&description=spoteefax";
+                    "&description=spoteletext";
 
   for (;;) {
     curl_easy_setopt(_curl, CURLOPT_HTTPHEADER, header);
